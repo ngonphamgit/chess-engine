@@ -1,0 +1,11 @@
+# executables
+*.exe
+*.out
+
+# build folders
+build/
+cmake-build-debug/
+
+# OS files
+.DS_Store
+Thumbs.db
