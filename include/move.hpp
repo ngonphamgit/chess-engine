@@ -7,3 +7,10 @@ struct Move
     int toRow;
     int toCol;
 };
+
+struct UndoMove
+{
+    char pieceCaptured;
+    char lastColor;
+};
+

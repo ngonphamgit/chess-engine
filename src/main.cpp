@@ -1,5 +1,6 @@
 #include <iostream>
-#include "board.hpp"
+#include "../include/board.hpp"
+#include "../include/perft.hpp"
 
 int main()
 {
@@ -8,10 +9,7 @@ int main()
     board.PrintBoard();
     char color = 'w';
 
-    while (true)
-    {
-        board.GetLegalMoves(color);
-    }
-
+    PerftTest(board, 4);
+    
     return 0;
 }
