@@ -252,12 +252,24 @@ std::vector<Move> Board::GetPawnMoves(int row, int col)
         //move one space up
         if (row - 1 >= 0 && IsEmptySquare(row - 1, col))
         {
-            moves.push_back({row, col, row - 1, col, this->board[row][col]});
-
-            //move two spaces up on first move
-            if (row == 6 && IsEmptySquare(row - 2, col))
+            //promotion
+            if (row - 1 == 0)
             {
-                moves.push_back({row, col, row - 2, col, this->board[row][col], PAWNDOUBLE});
+                moves.push_back({row, col, row - 1, col, this->board[row][col], PROMOTION, KNIGHT});
+                moves.push_back({row, col, row - 1, col, this->board[row][col], PROMOTION, BISHOP});
+                moves.push_back({row, col, row - 1, col, this->board[row][col], PROMOTION, ROOK});
+                moves.push_back({row, col, row - 1, col, this->board[row][col], PROMOTION, QUEEN});
+            }
+            //normal push
+            else
+            {
+                moves.push_back({row, col, row - 1, col, this->board[row][col]});
+
+                //double push on first move
+                if (row == 6 && IsEmptySquare(row - 2, col))
+                {
+                    moves.push_back({row, col, row - 2, col, this->board[row][col], PAWNDOUBLE});
+                }
             }
         }
 
@@ -267,8 +279,21 @@ std::vector<Move> Board::GetPawnMoves(int row, int col)
         {
             if (newRow >= 0 && IsBlackPiece(row - 1, col - 1))
             {
-                moves.push_back({row, col, row - 1, col - 1, this->board[row][col]});
+                //capture into promotion
+                if (newRow == 0)
+                {
+                    moves.push_back({row, col, row - 1, col - 1, this->board[row][col], PROMOTION, KNIGHT});
+                    moves.push_back({row, col, row - 1, col - 1, this->board[row][col], PROMOTION, BISHOP});
+                    moves.push_back({row, col, row - 1, col - 1, this->board[row][col], PROMOTION, ROOK});
+                    moves.push_back({row, col, row - 1, col - 1, this->board[row][col], PROMOTION, QUEEN});
+                }
+                //normal capture
+                else
+                {
+                    moves.push_back({row, col, row - 1, col - 1, this->board[row][col]});
+                }
             }
+            //en passant
             if (newRow >= 0 && this->enPassantRow == newRow && this->enPassantCol == col - 1)
             {
                 moves.push_back({row, col, row - 1, col - 1, this->board[row][col], ENPASSANT});
@@ -280,7 +305,17 @@ std::vector<Move> Board::GetPawnMoves(int row, int col)
         {
             if (newRow >= 0 && IsBlackPiece(row - 1, col + 1))
             {
-                moves.push_back({row, col, row - 1, col + 1, this->board[row][col]});
+                if (newRow == 0)
+                {
+                    moves.push_back({row, col, row - 1, col + 1, this->board[row][col], PROMOTION, KNIGHT});
+                    moves.push_back({row, col, row - 1, col + 1, this->board[row][col], PROMOTION, BISHOP});
+                    moves.push_back({row, col, row - 1, col + 1, this->board[row][col], PROMOTION, ROOK});
+                    moves.push_back({row, col, row - 1, col + 1, this->board[row][col], PROMOTION, QUEEN});
+                }
+                else
+                {
+                    moves.push_back({row, col, row - 1, col + 1, this->board[row][col]});
+                }
             }
             if (newRow >= 0 && this->enPassantRow == newRow && this->enPassantCol == col + 1)
             {
@@ -293,12 +328,22 @@ std::vector<Move> Board::GetPawnMoves(int row, int col)
         //move one space down
         if (row + 1 < 8 && IsEmptySquare(row + 1, col))
         {
-            moves.push_back({row, col, row + 1, col, this->board[row][col]});
-
-            //move two spaces down on first move
-            if (row == 1 && IsEmptySquare(row + 2, col))
+            if (row + 1 == 7)
             {
-                moves.push_back({row, col, row + 2, col, this->board[row][col], PAWNDOUBLE});
+                moves.push_back({row, col, row + 1, col, this->board[row][col], PROMOTION, KNIGHT});
+                moves.push_back({row, col, row + 1, col, this->board[row][col], PROMOTION, BISHOP});
+                moves.push_back({row, col, row + 1, col, this->board[row][col], PROMOTION, ROOK});
+                moves.push_back({row, col, row + 1, col, this->board[row][col], PROMOTION, QUEEN});
+            }
+            else
+            {
+                moves.push_back({row, col, row + 1, col, this->board[row][col]});
+
+                //move two spaces down on first move
+                if (row == 1 && IsEmptySquare(row + 2, col))
+                {
+                    moves.push_back({row, col, row + 2, col, this->board[row][col], PAWNDOUBLE});
+                }
             }
         }
 
@@ -308,7 +353,17 @@ std::vector<Move> Board::GetPawnMoves(int row, int col)
         {
             if (newRow < 8 && IsWhitePiece(row + 1, col - 1))
             {
-                moves.push_back({row, col, row + 1, col - 1, this->board[row][col]});
+                if (newRow == 7)
+                {
+                    moves.push_back({row, col, row + 1, col - 1, this->board[row][col], PROMOTION, KNIGHT});
+                    moves.push_back({row, col, row + 1, col - 1, this->board[row][col], PROMOTION, BISHOP});
+                    moves.push_back({row, col, row + 1, col - 1, this->board[row][col], PROMOTION, ROOK});
+                    moves.push_back({row, col, row + 1, col - 1, this->board[row][col], PROMOTION, QUEEN});
+                }
+                else
+                {
+                    moves.push_back({row, col, row + 1, col - 1, this->board[row][col]});
+                }
             }
 
             if (newRow < 8 && this->enPassantRow == newRow && this->enPassantCol == col - 1)
@@ -322,7 +377,17 @@ std::vector<Move> Board::GetPawnMoves(int row, int col)
         {
             if (newRow < 8 && IsWhitePiece(row + 1, col + 1))
             {
-                moves.push_back({row, col, row + 1, col + 1, this->board[row][col]});
+                if (newRow == 7)
+                {
+                    moves.push_back({row, col, row + 1, col + 1, this->board[row][col], PROMOTION, KNIGHT});
+                    moves.push_back({row, col, row + 1, col + 1, this->board[row][col], PROMOTION, BISHOP});
+                    moves.push_back({row, col, row + 1, col + 1, this->board[row][col], PROMOTION, ROOK});
+                    moves.push_back({row, col, row + 1, col + 1, this->board[row][col], PROMOTION, QUEEN});
+                }
+                else
+                {
+                    moves.push_back({row, col, row + 1, col + 1, this->board[row][col]});
+                }
             }
 
             if (newRow < 8 && this->enPassantRow == newRow && this->enPassantCol == col + 1)
@@ -762,6 +827,60 @@ UndoMove Board::MakeMove(const Move& move)
             {
                 this->enPassantRow = move.toRow - 1;
                 this->enPassantCol = move.toCol;
+            }
+        }
+        else if (move.moveType == PROMOTION)
+        {
+            switch (move.promoteType)
+            {
+                case KNIGHT:
+                {
+                    if (fromPiece == 'P')
+                    {
+                        this->board[move.toRow][move.toCol] = 'N';
+                    }
+                    else
+                    {
+                        this->board[move.toRow][move.toCol] = 'n';
+                    }
+                    break;
+                }
+                case BISHOP:
+                {
+                    if (fromPiece == 'P')
+                    {
+                        this->board[move.toRow][move.toCol] = 'B';
+                    }
+                    else
+                    {
+                        this->board[move.toRow][move.toCol] = 'b';
+                    }
+                    break;
+                }
+                case ROOK:
+                {
+                    if (fromPiece == 'P')
+                    {
+                        this->board[move.toRow][move.toCol] = 'R';
+                    }
+                    else
+                    {
+                        this->board[move.toRow][move.toCol] = 'r';
+                    }
+                    break;
+                }
+                case QUEEN:
+                {
+                    if (fromPiece == 'P')
+                    {
+                        this->board[move.toRow][move.toCol] = 'Q';
+                    }
+                    else
+                    {
+                        this->board[move.toRow][move.toCol] = 'q';
+                    }
+                    break;
+                }
             }
         }
     }

@@ -1,5 +1,13 @@
 #pragma once
 
+enum PromoteType
+{
+    KNIGHT,
+    BISHOP,
+    ROOK,
+    QUEEN
+};
+
 enum MoveType
 {
     NORMAL,
@@ -7,7 +15,8 @@ enum MoveType
     ENPASSANT,
     CASTLEKING,
     CASTLEQUEEN,
-    PAWNDOUBLE
+    PAWNDOUBLE,
+    PROMOTION
 };
 
 struct Move
@@ -19,6 +28,7 @@ struct Move
 
     char pieceMoved;
     MoveType moveType;
+    PromoteType promoteType;
 };
 
 struct UndoMove

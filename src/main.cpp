@@ -9,7 +9,7 @@ int main()
     board.PrintBoard();
     char color = 'w';
 
-    PerftTest(board, 6);
+    PerftTest(board, 5);
 
     return 0;
 }
