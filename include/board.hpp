@@ -8,9 +8,13 @@ class Board
 {
     private:
     char board[8][8];
-    char color;
+    bool whiteKingSide;
+    bool whiteQueenSide;
+    bool blackKingSide;
+    bool blackQueenSide;
 
     public:
+    char color;
     void SetupBoard();
     void PrintBoard();
 
@@ -19,6 +23,9 @@ class Board
     bool IsWhitePiece(int row, int col);
     bool IsBlackPiece(int row, int col);
     bool IsEmptySquare(int row, int col);
+    bool IsSquareAttacked(int row, int col, char color);
+    bool IsKingChecked(char color);
+
     std::vector<Move> GetPawnMoves(int row, int col);
     std::vector<Move> GetKnightMoves(int row, int col);
     std::vector<Move> GetBishopMoves(int row, int col);

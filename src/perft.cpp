@@ -14,7 +14,13 @@ int Perft(Board& board, int depth)
 
     for (const Move& move : moves)
     {
+        char originalColor = board.color;
         UndoMove undo = board.MakeMove(move);
+        if (board.IsKingChecked(originalColor))
+        {
+            board.UnmakeMove(move, undo);
+            continue;
+        }
         nodes += Perft(board, depth - 1);
         board.UnmakeMove(move, undo);
     }
@@ -29,7 +35,14 @@ void PerftTest(Board& board, int depth)
 
     for (const Move& move : moves)
     {
+        char originalColor = board.color;
         UndoMove undo = board.MakeMove(move);
+        if (board.IsKingChecked(originalColor))
+        {
+            board.UnmakeMove(move, undo);
+            continue;
+        }
+
         int nodes = Perft(board, depth - 1);
         totalNodes += nodes;
         board.UnmakeMove(move, undo);
