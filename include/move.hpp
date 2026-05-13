@@ -6,7 +6,8 @@ enum MoveType
     CAPTURE,
     ENPASSANT,
     CASTLEKING,
-    CASTLEQUEEN
+    CASTLEQUEEN,
+    PAWNDOUBLE
 };
 
 struct Move
@@ -25,6 +26,9 @@ struct UndoMove
     char pieceMoved;
     char pieceCaptured;
     char lastColor;
+
+    int enPassantRow;
+    int enPassantCol;
 
     bool whiteKingSide;
     bool whiteQueenSide;

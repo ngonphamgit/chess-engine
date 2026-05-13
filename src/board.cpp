@@ -27,6 +27,8 @@ void Board::SetupBoard()
     }
 
     this->color = 'w';
+    this->enPassantRow = -1;
+    this->enPassantCol = -1;
     this->whiteKingSide = true;
     this->whiteQueenSide = true;
     this->blackKingSide = true;
@@ -255,20 +257,35 @@ std::vector<Move> Board::GetPawnMoves(int row, int col)
             //move two spaces up on first move
             if (row == 6 && IsEmptySquare(row - 2, col))
             {
-                moves.push_back({row, col, row - 2, col, this->board[row][col]});
+                moves.push_back({row, col, row - 2, col, this->board[row][col], PAWNDOUBLE});
             }
         }
 
+        int newRow = row - 1;
         //top left capture
-        if (col - 1 >= 0 && row - 1 >= 0 && IsBlackPiece(row - 1, col - 1))
+        if (col - 1 >= 0)
         {
-            moves.push_back({row, col, row - 1, col - 1, this->board[row][col]});
+            if (newRow >= 0 && IsBlackPiece(row - 1, col - 1))
+            {
+                moves.push_back({row, col, row - 1, col - 1, this->board[row][col]});
+            }
+            if (newRow >= 0 && this->enPassantRow == newRow && this->enPassantCol == col - 1)
+            {
+                moves.push_back({row, col, row - 1, col - 1, this->board[row][col], ENPASSANT});
+            }
         }
 
         //top right capture
-        if (col + 1 < 8 && row - 1 >= 0 && IsBlackPiece(row - 1, col + 1))
+        if (col + 1 < 8)
         {
-            moves.push_back({row, col, row - 1, col + 1, this->board[row][col]});
+            if (newRow >= 0 && IsBlackPiece(row - 1, col + 1))
+            {
+                moves.push_back({row, col, row - 1, col + 1, this->board[row][col]});
+            }
+            if (newRow >= 0 && this->enPassantRow == newRow && this->enPassantCol == col + 1)
+            {
+                moves.push_back({row, col, row - 1, col + 1, this->board[row][col], ENPASSANT});
+            }
         }
     }
     else
@@ -278,22 +295,40 @@ std::vector<Move> Board::GetPawnMoves(int row, int col)
         {
             moves.push_back({row, col, row + 1, col, this->board[row][col]});
 
+            //move two spaces down on first move
             if (row == 1 && IsEmptySquare(row + 2, col))
             {
-                moves.push_back({row, col, row + 2, col, this->board[row][col]});
+                moves.push_back({row, col, row + 2, col, this->board[row][col], PAWNDOUBLE});
             }
         }
 
+        int newRow = row + 1;
         //bottom left capture
-        if (col - 1 >= 0 && row + 1 < 8 && IsWhitePiece(row + 1, col - 1))
+        if (col - 1 >= 0)
         {
-            moves.push_back({row, col, row + 1, col - 1, this->board[row][col]});
+            if (newRow < 8 && IsWhitePiece(row + 1, col - 1))
+            {
+                moves.push_back({row, col, row + 1, col - 1, this->board[row][col]});
+            }
+
+            if (newRow < 8 && this->enPassantRow == newRow && this->enPassantCol == col - 1)
+            {
+                moves.push_back({row, col, row + 1, col - 1, this->board[row][col], ENPASSANT});
+            }
         }
 
         //bottom right capture
-        if (col + 1 < 8 && row + 1 < 8 && IsWhitePiece(row + 1, col + 1))
+        if (col + 1 < 8)
         {
-            moves.push_back({row, col, row + 1, col + 1, this->board[row][col]});
+            if (newRow < 8 && IsWhitePiece(row + 1, col + 1))
+            {
+                moves.push_back({row, col, row + 1, col + 1, this->board[row][col]});
+            }
+
+            if (newRow < 8 && this->enPassantRow == newRow && this->enPassantCol == col + 1)
+            {
+                moves.push_back({row, col, row + 1, col + 1, this->board[row][col], ENPASSANT});
+            }
         }
     }
 
@@ -579,24 +614,6 @@ std::vector<Move> Board::GetLegalMoves()
             }
         }
     }
-    /*
-    std::vector<Move> legalMoves;
-
-    for (const Move& move : pseudoMoves)
-    {
-        char originalColor = this->color;
-
-        UndoMove undo = MakeMove(move);
-
-        if (!IsKingChecked(originalColor))
-        {
-            std::cout << "added" << std::endl;
-            legalMoves.push_back(move);
-        }
-
-        UnmakeMove(move, undo);
-    }
-    */
 
     return pseudoMoves;
 }
@@ -623,6 +640,9 @@ UndoMove Board::MakeMove(const Move& move)
     undo.pieceMoved = fromPiece;
     undo.pieceCaptured = toPiece;
     undo.lastColor = this->color;
+
+    undo.enPassantRow = this->enPassantRow;
+    undo.enPassantCol = this->enPassantCol;
 
     undo.whiteKingSide = whiteKingSide;
     undo.whiteQueenSide = whiteQueenSide;
@@ -665,7 +685,10 @@ UndoMove Board::MakeMove(const Move& move)
 
     //apply castling moves
     if (move.moveType == CASTLEKING)
-    {
+    {   
+        this->enPassantRow = -1;
+        this->enPassantCol = -1;
+
         if (fromPiece == 'K')
         {
             board[7][4] = '.';
@@ -685,6 +708,9 @@ UndoMove Board::MakeMove(const Move& move)
     }
     else if (move.moveType == CASTLEQUEEN)
     {
+        this->enPassantRow = -1;
+        this->enPassantCol = -1;
+
         if (fromPiece == 'K')
         {
             board[7][4] = '.';
@@ -707,6 +733,37 @@ UndoMove Board::MakeMove(const Move& move)
     {
         this->board[move.fromRow][move.fromCol] = '.';
         this->board[move.toRow][move.toCol] = fromPiece;
+
+        this->enPassantRow = -1;
+        this->enPassantCol = -1;
+
+        if (move.moveType == ENPASSANT)
+        {
+            if (fromPiece == 'P')
+            {
+                this->board[move.toRow + 1][move.toCol] = '.';
+            }
+            else if (fromPiece == 'p')
+            {
+                this->board[move.toRow - 1][move.toCol] = '.';
+            }
+        }
+        else if (move.moveType == PAWNDOUBLE)
+        {
+            this->enPassantRow = -1;
+            this->enPassantCol = -1;
+
+            if (fromPiece == 'P')
+            {
+                this->enPassantRow = move.toRow + 1;
+                this->enPassantCol = move.toCol;
+            }
+            else if (fromPiece == 'p')
+            {
+                this->enPassantRow = move.toRow - 1;
+                this->enPassantCol = move.toCol;
+            }
+        }
     }
     SwitchColors();
 
@@ -724,6 +781,9 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
     this->whiteQueenSide = undo.whiteQueenSide;
     this->blackKingSide = undo.blackKingSide;
     this->blackQueenSide = undo.blackQueenSide;
+
+    this->enPassantRow = undo.enPassantRow;
+    this->enPassantCol = undo.enPassantCol;
 
     if (move.moveType == CASTLEKING)
     {
@@ -767,5 +827,17 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
     {
         this->board[move.toRow][move.toCol] = toPiece;
         this->board[move.fromRow][move.fromCol] = fromPiece;
+
+        if (move.moveType == ENPASSANT)
+        {
+            if (fromPiece == 'P')
+            {
+                this->board[move.toRow + 1][move.toCol] = 'p';
+            }
+            else if (fromPiece == 'p')
+            {
+                this->board[move.toRow - 1][move.toCol] = 'P';
+            }
+        }
     }
 }

@@ -15,6 +15,8 @@ class Board
 
     public:
     char color;
+    int enPassantRow;
+    int enPassantCol;
     void SetupBoard();
     void PrintBoard();
 
