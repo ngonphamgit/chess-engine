@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <cctype>
+#include <cstring>
 
 void Board::SetupBoard()
 {
@@ -298,9 +299,180 @@ bool Board::IsKingChecked(char color)
         if (found) break;
     }
 
-    char enemyColor;
-    if (color == 'w') enemyColor = 'b'; else enemyColor = 'w';
-    return IsSquareAttacked(kingRow, kingCol, enemyColor);
+    //char enemyColor;
+    //if (color == 'w') enemyColor = 'b'; else enemyColor = 'w';
+    auto& enemyMap = (color == 'w') ? blackControl : whiteControl;
+    //return IsSquareAttacked(kingRow, kingCol, enemyColor);
+    return (enemyMap[kingRow][kingCol] == 1);
+}
+
+void Board::UpdateControlMaps()
+{
+    std::memset(whiteControl, 0, sizeof(whiteControl));
+    std::memset(blackControl, 0, sizeof(blackControl));
+
+    for (int r = 0; r < 8; r++)
+    {
+        for (int c = 0; c < 8; c ++)
+        {
+            if (IsEmptySquare(r, c)) continue;
+
+            bool isWhite = IsWhitePiece(r, c);
+            char piece = std::tolower(board[r][c]);
+
+            switch (piece)
+            {
+                case 'p':
+                {
+                    int dir = isWhite ? -1 : 1;
+
+                    int newRow = r + dir;
+                    if (newRow >= 0 && newRow < 8)
+                    {
+                        if (c - 1 >= 0)
+                        {
+                            if (isWhite)
+                                whiteControl[newRow][c - 1] = 1;
+                            else
+                                blackControl[newRow][c - 1] = 1;
+                        }
+
+                        if (c + 1 < 8)
+                        {
+                            if (isWhite)
+                                whiteControl[newRow][c + 1] = 1;
+                            else
+                                blackControl[newRow][c + 1] = 1;
+                        }
+                    }
+
+                    break;
+                }
+                case 'n':
+                {
+                    int offsets[8][2]
+                    {
+                        {-2, -1},
+                        {-2,  1},
+                        {-1, -2},
+                        {-1,  2},
+                        { 1, -2},
+                        { 1,  2},
+                        { 2, -1},
+                        { 2,  1}
+                    };
+
+                    for (int i = 0; i < 8; i++)
+                    {
+                        int newRow = r + offsets[i][0];
+                        int newCol = c + offsets[i][1];
+
+                        if (newRow < 0 || newRow >= 8) continue;
+                        if (newCol < 0 || newCol >= 8) continue;
+
+                        if (isWhite)
+                        {
+                            whiteControl[newRow][newCol] = 1;
+                        }
+                        else
+                        {
+                            blackControl[newRow][newCol] = 1;
+                        }
+                    }
+
+                    break;
+                }
+                case 'b':
+                case 'r':
+                case 'q':
+                {
+                    int dir[8][2] = {
+                        {1, 0},
+                        {0, 1},
+                        {-1, 0},
+                        {0, -1},
+                        {1, 1},
+                        {1, -1},
+                        {-1, 1},
+                        {-1, -1}
+                    };
+
+                    int start = 0;
+                    int end = 8;
+
+                    if (piece == 'b')
+                    {
+                        start = 4;
+                    }
+                    else if (piece == 'r')
+                    {
+                        end = 4;
+                    }
+
+                    for (int i = start; i < end; i++)
+                    {
+                        int dirRow = dir[i][0];
+                        int dirCol = dir[i][1];
+
+                        int curRow = r + dirRow;
+                        int curCol = c + dirCol;
+
+                        while (curRow >= 0 && curRow < 8 && curCol >= 0 && curCol < 8)
+                        {
+                            if (isWhite)
+                            {
+                                whiteControl[curRow][curCol] = 1;
+                            }
+                            else
+                            {
+                                blackControl[curRow][curCol] = 1;
+                            }
+
+                            if (!IsEmptySquare(curRow, curCol)) break;
+
+                            curRow += dirRow;
+                            curCol += dirCol;
+                        }
+                    }
+
+                    break;
+                }
+                case 'k':
+                {
+                    int dir[8][2] = {
+                        {1, 0},
+                        {0, 1},
+                        {-1, 0},
+                        {0, -1},
+                        {1, 1},
+                        {1, -1},
+                        {-1, 1},
+                        {-1, -1}
+                    };
+
+                    for (int i = 0; i < 8; i++)
+                    {
+                        int newRow = r + dir[i][0];
+                        int newCol = c + dir[i][1];
+
+                        if (newRow < 0 || newRow >= 8) continue;
+                        if (newCol < 0 || newCol >= 8) continue;
+
+                        if (isWhite)
+                        {
+                            whiteControl[newRow][newCol] = 1;
+                        }
+                        else
+                        {
+                            blackControl[newRow][newCol] = 1;
+                        }
+                    }
+
+                    break;
+                }
+            }
+        }
+    }
 }
 
 std::vector<Move> Board::GetPawnMoves(int row, int col)
@@ -632,8 +804,8 @@ std::vector<Move> Board::GetKingMoves(int row, int col)
             && IsEmptySquare(row, col + 1) 
             && IsEmptySquare(row, col + 2)
             && !IsKingChecked('w')
-            && !IsSquareAttacked(row, col + 1, 'b')
-            && !IsSquareAttacked(row, col + 2, 'b')
+            && !(blackControl[row][col + 1] == 1)
+            && !(blackControl[row][col + 2] == 1)
             && this->board[row][7] == 'R')
         {
             moves.push_back({row, col, row, col + 2, this->board[row][col], CASTLEKING});
@@ -643,8 +815,8 @@ std::vector<Move> Board::GetKingMoves(int row, int col)
             && IsEmptySquare(row, col - 2)
             && IsEmptySquare(row, col - 3)
             && !IsKingChecked('w')
-            && !IsSquareAttacked(row, col - 1, 'b')
-            && !IsSquareAttacked(row, col - 2, 'b')
+            && !(blackControl[row][col - 1] == 1)
+            && !(blackControl[row][col - 2] == 1)
             && this->board[row][0] == 'R')
         {
             moves.push_back({row, col, row, col - 2, this->board[row][col], CASTLEQUEEN});
@@ -656,8 +828,8 @@ std::vector<Move> Board::GetKingMoves(int row, int col)
             && IsEmptySquare(row, col + 1) 
             && IsEmptySquare(row, col + 2)
             && !IsKingChecked('b')
-            && !IsSquareAttacked(row, col + 1, 'w')
-            && !IsSquareAttacked(row, col + 2, 'w')
+            && !(whiteControl[row][col + 1] == 1)
+            && !(whiteControl[row][col + 2] == 1)
             && this->board[row][7] == 'r')
         {
             moves.push_back({row, col, row, col + 2, this->board[row][col], CASTLEKING});
@@ -667,8 +839,8 @@ std::vector<Move> Board::GetKingMoves(int row, int col)
             && IsEmptySquare(row, col - 2)
             && IsEmptySquare(row, col - 3)
             && !IsKingChecked('b')
-            && !IsSquareAttacked(row, col - 1, 'w')
-            && !IsSquareAttacked(row, col - 2, 'w')
+            && !(whiteControl[row][col - 1] == 1)
+            && !(whiteControl[row][col - 2] == 1)
             && this->board[row][0] == 'r')
         {
             moves.push_back({row, col, row, col - 2, this->board[row][col], CASTLEQUEEN});
@@ -944,6 +1116,7 @@ UndoMove Board::MakeMove(const Move& move)
             }
         }
     }
+    UpdateControlMaps();
     SwitchColors();
 
     return undo;
@@ -1019,4 +1192,5 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
             }
         }
     }
+    UpdateControlMaps();
 }

@@ -33,5 +33,15 @@ int Eval::GetEvalScore(Board& board)
         }
     }
 
+    if (board.whiteControl[3][3] == 1) score += 20;
+    if (board.whiteControl[3][4] == 1) score += 20;
+    if (board.whiteControl[4][3] == 1) score += 20;
+    if (board.whiteControl[4][4] == 1) score += 20;
+
+    if (board.blackControl[3][3] == 1) score -= 20;
+    if (board.blackControl[3][4] == 1) score -= 20;
+    if (board.blackControl[4][3] == 1) score -= 20;
+    if (board.blackControl[4][4] == 1) score -= 20;
+    
     return score;
 }

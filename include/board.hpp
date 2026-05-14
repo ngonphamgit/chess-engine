@@ -32,6 +32,7 @@ class Board
     bool IsEmptySquare(int row, int col);
     bool IsSquareAttacked(int row, int col, char color);
     bool IsKingChecked(char color);
+    void UpdateControlMaps();
 
     std::vector<Move> GetPawnMoves(int row, int col);
     std::vector<Move> GetKnightMoves(int row, int col);

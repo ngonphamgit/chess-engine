@@ -15,6 +15,7 @@ int main()
     while (true)
     {
         board.PrintBoard();
+        
         if (board.color == 'w')
         {
             std::string inputMove;
