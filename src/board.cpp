@@ -1,4 +1,5 @@
 #include "../include/board.hpp"
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -53,6 +54,65 @@ std::string Board::SquareToString(int row, int col)
     char rank = '8' - row;
 
     return std::string() + file + rank;
+}
+
+Move Board::ParseMove(std::string input)
+{
+    Move move;
+    int fromRow;
+    int fromCol;
+    int toRow;
+    int toCol;
+
+    fromCol = input[0] - 'a';
+    fromRow = 8 - (input[1] - '0');
+
+    if (input == "O-O")
+    {
+        if (this->color == 'w')
+        {
+            return {7, 4, 7, 6, this->board[7][4], CASTLEKING};
+        }
+        else
+        {
+            return {0, 4, 0, 6, this->board[0][4], CASTLEKING};
+        }
+        
+    }
+    else if (input == "O-O-O")
+    {
+        if (this->color == 'w')
+        {
+            return {7, 4, 7, 2, this->board[7][4], CASTLEKING};
+        }
+        else
+        {
+            return {0, 4, 0, 2, this->board[0][4], CASTLEKING};
+        }
+    }
+
+    if (input[2] == 'x')
+    {
+        toCol = input[3] - 'a';
+        toRow =  8 - (input[4] - '0');
+        move.moveType = CAPTURE;
+    }
+    else
+    {
+        toCol = input[2] - 'a';
+        toRow = 8 - (input[3] - '0');
+    }
+
+    move.fromRow = fromRow;
+    move.fromCol = fromCol;
+    move.toRow = toRow;
+    move.toCol = toCol;
+
+    move.pieceMoved = this->board[fromRow][fromCol];
+
+    //std::cout << fromRow << " " << fromCol << " " << toRow << " " << toCol << " " << move.pieceMoved << std::endl;
+
+    return move;
 }
 
 bool Board::IsWhitePiece(int row, int col)

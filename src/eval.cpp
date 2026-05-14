@@ -1,0 +1,37 @@
+#include "../include/eval.hpp"
+
+Eval::Eval()
+{
+    pieceValue['P'] = 100;
+    pieceValue['N'] = 320;
+    pieceValue['B'] = 330;
+    pieceValue['R'] = 500;
+    pieceValue['Q'] = 900;
+    pieceValue['K'] = 20000;
+
+    pieceValue['p'] = -100;
+    pieceValue['n'] = -320;
+    pieceValue['b'] = -330;
+    pieceValue['r'] = -500;
+    pieceValue['q'] = -900;
+    pieceValue['k'] = -20000;
+}
+
+int Eval::GetEvalScore(Board& board)
+{
+    int score = 0;
+
+    for (int r = 0; r < 8; r++)
+    {
+        for (int c = 0; c < 8; c++)
+        {
+            char piece = board.board[r][c];
+
+            if (piece == '.') continue;
+
+            score += this->pieceValue[piece];
+        }
+    }
+
+    return score;
+}

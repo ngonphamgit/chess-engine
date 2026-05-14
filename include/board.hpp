@@ -7,20 +7,25 @@
 class Board
 {
     private:
-    char board[8][8];
     bool whiteKingSide;
     bool whiteQueenSide;
     bool blackKingSide;
     bool blackQueenSide;
 
     public:
+    char board[8][8];
+    int whiteControl[8][8] = {};
+    int blackControl[8][8] = {};
+
     char color;
     int enPassantRow;
     int enPassantCol;
+
     void SetupBoard();
     void PrintBoard();
 
     std::string SquareToString(int row, int col);
+    Move ParseMove(std::string input);
 
     bool IsWhitePiece(int row, int col);
     bool IsBlackPiece(int row, int col);
