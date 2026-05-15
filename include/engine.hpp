@@ -7,9 +7,10 @@
 class Engine
 {
     public:
+    uint64_t nodes = 0;
     Eval eval;
 
     Engine();
-    int Minimax(Board& board, int depth, bool maxPlayer);
-    Move GetBestMove(Board& board, int depth);
+    int Minimax(Board& board, int depth, int alpha, int beta, bool maxPlayer);
+    Move GetBestMove(Board& board, int depth, bool maxPlayer);
 };

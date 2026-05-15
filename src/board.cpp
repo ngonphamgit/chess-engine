@@ -43,7 +43,7 @@ void Board::PrintBoard()
     {
         for (int c = 0; c < 8; c++)
         {
-            std::cout << this->board[r][c];
+            std::cout << this->board[r][c] << " ";
         }
         std::cout << std::endl;
     }
@@ -274,35 +274,19 @@ bool Board::IsKingChecked(char color)
 {
     int kingRow = -1;
     int kingCol = -1;
-    bool found = false;
 
-    for (int r = 0; r < 8; r++)
+    if (color == 'w')
     {
-        for (int c = 0; c < 8; c++)
-        {
-            if (color == 'w' && this->board[r][c] == 'K')
-            {
-                kingRow = r;
-                kingCol = c;
-                found = true;
-                break;
-            }
-            else if (color == 'b' && this->board[r][c] == 'k')
-            {
-                kingRow = r;
-                kingCol = c;
-                found = true;
-                break;
-            }
-        }
-
-        if (found) break;
+        kingRow = this->whiteKingRow;
+        kingCol = this->whiteKingCol;
     }
-
-    //char enemyColor;
-    //if (color == 'w') enemyColor = 'b'; else enemyColor = 'w';
+    else
+    {
+        kingRow = this->blackKingRow;
+        kingCol = this->blackKingCol;
+    }
+    
     auto& enemyMap = (color == 'w') ? blackControl : whiteControl;
-    //return IsSquareAttacked(kingRow, kingCol, enemyColor);
     return (enemyMap[kingRow][kingCol] == 1);
 }
 
@@ -310,6 +294,8 @@ void Board::UpdateControlMaps()
 {
     std::memset(whiteControl, 0, sizeof(whiteControl));
     std::memset(blackControl, 0, sizeof(blackControl));
+    whiteControlSquares = 0;
+    blackControlSquares = 0;
 
     for (int r = 0; r < 8; r++)
     {
@@ -332,17 +318,29 @@ void Board::UpdateControlMaps()
                         if (c - 1 >= 0)
                         {
                             if (isWhite)
+                            {
                                 whiteControl[newRow][c - 1] = 1;
+                                whiteControlSquares++;
+                            }
                             else
+                            {
                                 blackControl[newRow][c - 1] = 1;
+                                blackControlSquares++;
+                            }
                         }
 
                         if (c + 1 < 8)
                         {
                             if (isWhite)
+                            {
                                 whiteControl[newRow][c + 1] = 1;
+                                whiteControlSquares++;
+                            }
                             else
+                            {
                                 blackControl[newRow][c + 1] = 1;
+                                blackControlSquares++;
+                            } 
                         }
                     }
 
@@ -373,10 +371,12 @@ void Board::UpdateControlMaps()
                         if (isWhite)
                         {
                             whiteControl[newRow][newCol] = 1;
+                            whiteControlSquares++;
                         }
                         else
                         {
                             blackControl[newRow][newCol] = 1;
+                            blackControlSquares++;
                         }
                     }
 
@@ -422,10 +422,12 @@ void Board::UpdateControlMaps()
                             if (isWhite)
                             {
                                 whiteControl[curRow][curCol] = 1;
+                                whiteControlSquares++;
                             }
                             else
                             {
                                 blackControl[curRow][curCol] = 1;
+                                blackControlSquares++;
                             }
 
                             if (!IsEmptySquare(curRow, curCol)) break;
@@ -461,10 +463,12 @@ void Board::UpdateControlMaps()
                         if (isWhite)
                         {
                             whiteControl[newRow][newCol] = 1;
+                            whiteControlSquares++;
                         }
                         else
                         {
                             blackControl[newRow][newCol] = 1;
+                            blackControlSquares++;
                         }
                     }
 
@@ -993,6 +997,9 @@ UndoMove Board::MakeMove(const Move& move)
 
             board[7][7] = '.';
             board[7][5] = 'R';
+
+            this->whiteKingRow = 7;
+            this->whiteKingCol = 6;
         }
         else
         {
@@ -1001,6 +1008,9 @@ UndoMove Board::MakeMove(const Move& move)
 
             board[0][7] = '.';
             board[0][5] = 'r';
+
+            this->blackKingRow = 0;
+            this->blackKingCol = 6;
         }
     }
     else if (move.moveType == CASTLEQUEEN)
@@ -1015,6 +1025,9 @@ UndoMove Board::MakeMove(const Move& move)
 
             board[7][0] = '.';
             board[7][3] = 'R';
+
+            this->whiteKingRow = 7;
+            this->whiteKingCol = 2;
         }
         else
         {
@@ -1023,6 +1036,9 @@ UndoMove Board::MakeMove(const Move& move)
 
             board[0][0] = '.';
             board[0][3] = 'r';
+
+            this->blackKingRow = 0;
+            this->blackKingCol = 2;
         }
     }
     //apply normal moves
@@ -1030,6 +1046,17 @@ UndoMove Board::MakeMove(const Move& move)
     {
         this->board[move.fromRow][move.fromCol] = '.';
         this->board[move.toRow][move.toCol] = fromPiece;
+
+        if (fromPiece == 'K')
+        {
+            this->whiteKingRow = move.toRow;
+            this->whiteKingCol = move.toCol;
+        }
+        else if (fromPiece == 'k')
+        {
+            this->blackKingRow = move.toRow;
+            this->blackKingCol = move.toCol;
+        }
 
         this->enPassantRow = -1;
         this->enPassantCol = -1;
@@ -1146,6 +1173,9 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
 
             board[7][5] = '.';
             board[7][7] = 'R';
+
+            this->whiteKingRow = 7;
+            this->whiteKingCol = 4;
         }
         else
         {
@@ -1154,6 +1184,9 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
 
             board[0][5] = '.';
             board[0][7] = 'r';
+
+            this->blackKingRow = 0;
+            this->blackKingCol = 4;
         }
     }
     else if (move.moveType == CASTLEQUEEN)
@@ -1165,6 +1198,9 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
 
             board[7][3] = '.';
             board[7][0] = 'R';
+
+            this->whiteKingRow = 7;
+            this->whiteKingCol = 4;
         }
         else
         {
@@ -1173,12 +1209,26 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
 
             board[0][3] = '.';
             board[0][0] = 'r';
+            
+            this->blackKingRow = 0;
+            this->blackKingCol = 4;
         }
     }
     else
     {
         this->board[move.toRow][move.toCol] = toPiece;
         this->board[move.fromRow][move.fromCol] = fromPiece;
+
+        if (fromPiece == 'K')
+        {
+            this->whiteKingRow = move.fromRow;
+            this->whiteKingCol = move.fromCol;
+        }
+        else if (fromPiece == 'k')
+        {
+            this->blackKingRow = move.fromRow;
+            this->blackKingCol = move.fromCol;
+        }
 
         if (move.moveType == ENPASSANT)
         {

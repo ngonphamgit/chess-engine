@@ -13,9 +13,18 @@ class Board
     bool blackQueenSide;
 
     public:
+    bool gameOver = false;
     char board[8][8];
+
+    int whiteControlSquares = 0;
+    int blackControlSquares = 0;
     int whiteControl[8][8] = {};
     int blackControl[8][8] = {};
+    
+    int whiteKingRow = 7;
+    int whiteKingCol = 4;
+    int blackKingRow = 0;
+    int blackKingCol = 4;
 
     char color;
     int enPassantRow;

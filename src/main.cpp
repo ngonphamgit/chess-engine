@@ -4,6 +4,8 @@
 
 #include <iostream>
 #include <string>
+#include <chrono>
+#include <cstdint>
 
 int main()
 {
@@ -12,7 +14,22 @@ int main()
 
     Engine engine;
 
-    while (true)
+    auto start =
+        std::chrono::high_resolution_clock::now();
+
+    Move move = engine.GetBestMove(board, 5, false);
+
+    auto end =
+        std::chrono::high_resolution_clock::now();
+
+    double seconds =
+        std::chrono::duration<double>(end - start).count();
+
+    std::cout << "Nodes: " << engine.nodes << '\n';
+    std::cout << "Time: " << seconds << " sec\n";
+    std::cout << "NPS: " << (engine.nodes / seconds) << '\n';
+
+    while (!board.gameOver)
     {
         board.PrintBoard();
         
@@ -28,7 +45,7 @@ int main()
         }
         else
         {
-            Move move = engine.GetBestMove(board, 4);
+            Move move = engine.GetBestMove(board, 5, false);
             board.MakeMove(move);
         }
     }

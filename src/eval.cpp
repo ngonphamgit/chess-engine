@@ -42,6 +42,8 @@ int Eval::GetEvalScore(Board& board)
     if (board.blackControl[3][4] == 1) score -= 20;
     if (board.blackControl[4][3] == 1) score -= 20;
     if (board.blackControl[4][4] == 1) score -= 20;
+
+    score += (board.whiteControlSquares - board.blackControlSquares) * 10;
     
     return score;
 }

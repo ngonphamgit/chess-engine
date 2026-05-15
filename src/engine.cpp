@@ -10,8 +10,10 @@ Engine::Engine()
     
 }
 
-int Engine::Minimax(Board& board, int depth, bool maxPlayer)
+int Engine::Minimax(Board& board, int depth, int alpha, int beta, bool maxPlayer)
 {
+    this->nodes++;
+
     if (depth == 0) return eval.GetEvalScore(board);
 
     std::vector<Move> moves = board.GetLegalMoves();
@@ -30,10 +32,13 @@ int Engine::Minimax(Board& board, int depth, bool maxPlayer)
                 continue;
             }
 
-            int score = Minimax(board, depth - 1, !maxPlayer);
+            int score = Minimax(board, depth - 1, alpha, beta, !maxPlayer);
 
             board.UnmakeMove(move, undo);
             best = std::max(best, score);
+            alpha = std::max(alpha, score);
+
+            if (alpha >= beta) break;
         }
 
         return best;
@@ -52,24 +57,31 @@ int Engine::Minimax(Board& board, int depth, bool maxPlayer)
                 continue;
             }
 
-            int score = Minimax(board, depth - 1, !maxPlayer);
+            int score = Minimax(board, depth - 1, alpha, beta, !maxPlayer);
 
             board.UnmakeMove(move, undo);
             best = std::min(best, score);
+            beta = std::min(beta, score);
+
+            if (alpha >= beta) break;
         }
 
         return best;
     }
 }
 
-Move Engine::GetBestMove(Board& board, int depth)
+Move Engine::GetBestMove(Board& board, int depth, bool maxPlayer)
 {
-    int best = -1000000;
+    int best = 1000000;
+    int alpha = -1000000;
+    int beta = 1000000;
+    if (maxPlayer) 
+    {
+        best = -1000000;
+    }
     Move bestMove;
 
     std::vector<Move> moves = board.GetLegalMoves();
-
-    bool isMaximizer = (board.color == 'w') ? true : false;
 
     for (const Move& move : moves)
     {
@@ -81,13 +93,28 @@ Move Engine::GetBestMove(Board& board, int depth)
             continue;
         }
 
-        int score = -Minimax(board, depth - 1, !isMaximizer);
+        int score = Minimax(board, depth - 1, alpha, beta, !maxPlayer);
 
         board.UnmakeMove(move, undo);
-        if (score > best)
+        if (maxPlayer)
         {
-            best = score;
-            bestMove = move;
+            if (score > best)
+            {
+                best = score;
+                bestMove = move;
+            }
+
+            alpha = std::max(alpha, score);
+        }
+        else
+        {
+            if (score < best)
+            {
+                best = score;
+                bestMove = move;
+            }
+
+            beta = std::min(beta, score);
         }
     }
 
