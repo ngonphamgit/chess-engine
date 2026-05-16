@@ -5,11 +5,11 @@
 #include <iostream>
 #include <vector>
 
-int Perft(Board& board, int depth)
+int Perft(Board& board, int depth, std::vector<Move>& moves)
 {
     if (depth == 0) return 1;
 
-    std::vector<Move> moves = board.GetLegalMoves();
+    board.GetLegalMoves(moves);
     int nodes = 0;
 
     for (const Move& move : moves)
@@ -21,7 +21,7 @@ int Perft(Board& board, int depth)
             board.UnmakeMove(move, undo);
             continue;
         }
-        nodes += Perft(board, depth - 1);
+        nodes += Perft(board, depth - 1, moves);
         board.UnmakeMove(move, undo);
     }
 
@@ -30,7 +30,8 @@ int Perft(Board& board, int depth)
 
 void PerftTest(Board& board, int depth)
 {
-    std::vector<Move> moves = board.GetLegalMoves();
+    std::vector<Move> moves;
+    board.GetLegalMoves(moves);
     int totalNodes = 0;
 
     for (const Move& move : moves)
@@ -43,7 +44,7 @@ void PerftTest(Board& board, int depth)
             continue;
         }
 
-        int nodes = Perft(board, depth - 1);
+        int nodes = Perft(board, depth - 1, moves);
         totalNodes += nodes;
         board.UnmakeMove(move, undo);
 

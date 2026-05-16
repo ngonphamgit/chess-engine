@@ -4,6 +4,8 @@
 #include "eval.hpp"
 #include "move.hpp"
 
+#include <vector>
+
 class Engine
 {
     public:
@@ -11,6 +13,9 @@ class Engine
     Eval eval;
 
     Engine();
+
+    int GetMoveScore(const Move& move, Board& board);
+    void OrderMoves(std::vector<Move>& moves, Board& board);
     int Minimax(Board& board, int depth, int alpha, int beta, bool maxPlayer);
     Move GetBestMove(Board& board, int depth, bool maxPlayer);
 };

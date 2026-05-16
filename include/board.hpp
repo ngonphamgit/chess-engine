@@ -26,6 +26,27 @@ class Board
     int blackKingRow = 0;
     int blackKingCol = 4;
 
+    int dir[8][2] = {
+        {1, 0}, //s
+        {0, 1}, //e
+        {-1, 0}, //n
+        {0, -1}, //w
+        {1, 1}, //se
+        {1, -1}, //sw
+        {-1, 1}, //ne
+        {-1, -1} //nw
+    };
+    int knightOffsets[8][2] = {
+        {-2, -1},
+        {-2,  1},
+        {-1, -2},
+        {-1,  2},
+        { 1, -2},
+        { 1,  2},
+        { 2, -1},
+        { 2,  1}
+    };
+
     char color;
     int enPassantRow;
     int enPassantCol;
@@ -41,15 +62,16 @@ class Board
     bool IsEmptySquare(int row, int col);
     bool IsSquareAttacked(int row, int col, char color);
     bool IsKingChecked(char color);
-    void UpdateControlMaps();
+    void SetupControlMaps();
+    void UpdateControlMaps(int fromRow, int fromCol, int toRow, int toCol);
 
-    std::vector<Move> GetPawnMoves(int row, int col);
-    std::vector<Move> GetKnightMoves(int row, int col);
-    std::vector<Move> GetBishopMoves(int row, int col);
-    std::vector<Move> GetRookMoves(int row, int col);
-    std::vector<Move> GetQueenMoves(int row, int col);
-    std::vector<Move> GetKingMoves(int row, int col);
-    std::vector<Move> GetLegalMoves();
+    void GetPawnMoves(int row, int col, std::vector<Move>& moves);
+    void GetKnightMoves(int row, int col, std::vector<Move>& moves);
+    void GetBishopMoves(int row, int col, std::vector<Move>& moves);
+    void GetRookMoves(int row, int col, std::vector<Move>& moves);
+    void GetQueenMoves(int row, int col, std::vector<Move>& moves);
+    void GetKingMoves(int row, int col, std::vector<Move>& moves);
+    void GetLegalMoves(std::vector<Move>& moves);
 
     void SwitchColors();
     UndoMove MakeMove(const Move& move);

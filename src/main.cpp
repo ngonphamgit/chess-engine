@@ -17,13 +17,14 @@ int main()
     auto start =
         std::chrono::high_resolution_clock::now();
 
-    Move move = engine.GetBestMove(board, 5, false);
+    Move move = engine.GetBestMove(board, 5, true);
 
     auto end =
         std::chrono::high_resolution_clock::now();
 
-    double seconds =
-        std::chrono::duration<double>(end - start).count();
+    std::chrono::duration<double> elapsed = end - start;
+
+    double seconds = elapsed.count();
 
     std::cout << "Nodes: " << engine.nodes << '\n';
     std::cout << "Time: " << seconds << " sec\n";
@@ -33,7 +34,7 @@ int main()
     {
         board.PrintBoard();
         
-        if (board.color == 'w')
+        if (board.color == 'b')
         {
             std::string inputMove;
 
@@ -45,7 +46,16 @@ int main()
         }
         else
         {
-            Move move = engine.GetBestMove(board, 5, false);
+            auto start = std::chrono::high_resolution_clock::now();
+            Move move = engine.GetBestMove(board, 6, true);
+            auto end = std::chrono::high_resolution_clock::now();
+
+            std::chrono::duration<double> elapsed = end - start;
+            double seconds = elapsed.count();
+
+            std::cout << "Nodes: " << engine.nodes << '\n';
+            std::cout << "Time: " << seconds << " sec\n";
+            std::cout << "NPS: " << (engine.nodes / seconds) << '\n';
             board.MakeMove(move);
         }
     }

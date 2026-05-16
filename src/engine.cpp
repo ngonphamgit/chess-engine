@@ -4,10 +4,39 @@
 
 #include <algorithm>
 #include <vector>
+#include <iostream>
+#include <cctype>
 
 Engine::Engine()
 {
     
+}
+
+int Engine::GetMoveScore(const Move& move, Board& board)
+{
+    int score = 0;
+    if (move.moveType == CAPTURE)
+    {
+        char capturedPiece = std::toupper(board.board[move.toRow][move.toCol]);
+        char pieceMoved = std::toupper(move.pieceMoved);
+        
+        score += (this->eval.pieceValue[capturedPiece] * 10 - this->eval.pieceValue[pieceMoved]);
+    }
+    
+    return score;
+}
+
+void Engine::OrderMoves(std::vector<Move>& moves, Board& board)
+{
+    for (Move& move : moves)
+    {
+        move.orderingScore = GetMoveScore(move, board);
+    }
+    std::sort(moves.begin(), moves.end(), [&board, this](const Move& move1, const Move& move2)
+        {
+            return move1.orderingScore > move2.orderingScore;
+        }
+    );
 }
 
 int Engine::Minimax(Board& board, int depth, int alpha, int beta, bool maxPlayer)
@@ -16,7 +45,9 @@ int Engine::Minimax(Board& board, int depth, int alpha, int beta, bool maxPlayer
 
     if (depth == 0) return eval.GetEvalScore(board);
 
-    std::vector<Move> moves = board.GetLegalMoves();
+    std::vector<Move> moves;
+    board.GetLegalMoves(moves);
+    OrderMoves(moves, board);
 
     if (maxPlayer)
     {
@@ -41,6 +72,7 @@ int Engine::Minimax(Board& board, int depth, int alpha, int beta, bool maxPlayer
             if (alpha >= beta) break;
         }
 
+        moves.clear();
         return best;
     }
     else
@@ -66,12 +98,14 @@ int Engine::Minimax(Board& board, int depth, int alpha, int beta, bool maxPlayer
             if (alpha >= beta) break;
         }
 
+        moves.clear();
         return best;
     }
 }
 
 Move Engine::GetBestMove(Board& board, int depth, bool maxPlayer)
 {
+    this->nodes = 0;
     int best = 1000000;
     int alpha = -1000000;
     int beta = 1000000;
@@ -81,7 +115,9 @@ Move Engine::GetBestMove(Board& board, int depth, bool maxPlayer)
     }
     Move bestMove;
 
-    std::vector<Move> moves = board.GetLegalMoves();
+    std::vector<Move> moves;
+    board.GetLegalMoves(moves);
+    OrderMoves(moves, board);
 
     for (const Move& move : moves)
     {
@@ -118,5 +154,6 @@ Move Engine::GetBestMove(Board& board, int depth, bool maxPlayer)
         }
     }
 
+    moves.clear();
     return bestMove;
 }

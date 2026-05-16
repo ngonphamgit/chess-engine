@@ -29,6 +29,8 @@ struct Move
     char pieceMoved;
     MoveType moveType;
     PromoteType promoteType;
+
+    int orderingScore;
 };
 
 struct UndoMove
