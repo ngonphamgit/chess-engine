@@ -1,4 +1,5 @@
 #include "../include/board.hpp"
+#include "../include/engine.hpp"
 
 #include <iostream>
 #include <string>
@@ -49,6 +50,27 @@ void Board::PrintBoard()
         }
         std::cout << std::endl;
     }
+}
+
+int Board::PieceIndex(char piece)
+{
+    switch (piece)
+    {
+        case 'P': return 0;
+        case 'N': return 1;
+        case 'B': return 2;
+        case 'R': return 3;
+        case 'Q': return 4;
+        case 'K': return 5;
+
+        case 'p': return 6;
+        case 'n': return 7;
+        case 'b': return 8;
+        case 'r': return 9;
+        case 'q': return 10;
+        case 'k': return 11;
+    }
+    return -1;
 }
 
 std::string Board::SquareToString(int row, int col)
@@ -1189,6 +1211,9 @@ UndoMove Board::MakeMove(const Move& move)
     char fromPiece = this->board[move.fromRow][move.fromCol];
     char toPiece = this->board[move.toRow][move.toCol];
 
+    int fromIndex = PieceIndex(fromPiece);
+    int toIndex = PieceIndex(toPiece);
+
     undo.pieceMoved = fromPiece;
     undo.pieceCaptured = toPiece;
     undo.lastColor = this->color;
@@ -1200,6 +1225,9 @@ UndoMove Board::MakeMove(const Move& move)
     undo.whiteQueenSide = whiteQueenSide;
     undo.blackKingSide = blackKingSide;
     undo.blackQueenSide = blackQueenSide;
+
+    this->hash ^= Engine::pieceSquareVals[move.fromRow][move.fromCol][fromIndex];
+    this->hash ^= Engine::pieceSquareVals[move.toRow][move.toCol][fromIndex];
 
     //can't castle after moving king
     if (fromPiece == 'K')
@@ -1405,6 +1433,9 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
     char fromPiece = undo.pieceMoved;
     char toPiece = undo.pieceCaptured;
 
+    int fromIndex = PieceIndex(fromPiece);
+    int toIndex = PieceIndex(toPiece);
+
     this->color = undo.lastColor;
 
     this->whiteKingSide = undo.whiteKingSide;
@@ -1414,6 +1445,13 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
 
     this->enPassantRow = undo.enPassantRow;
     this->enPassantCol = undo.enPassantCol;
+
+    this->hash ^= Engine::pieceSquareVals[move.fromRow][move.fromCol][fromIndex];
+    this->hash ^= Engine::pieceSquareVals[move.toRow][move.toCol][fromIndex];
+    if (toPiece != '.')
+    {
+        this->hash ^= Engine::pieceSquareVals[move.toRow][move.toCol][toIndex];
+    }
 
     if (move.moveType == CASTLEKING)
     {

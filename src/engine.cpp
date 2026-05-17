@@ -6,10 +6,44 @@
 #include <vector>
 #include <iostream>
 #include <cctype>
+#include <random>
+
+uint64_t Engine::pieceSquareVals[8][8][12];
+uint64_t Engine::sideKey;
+uint64_t Engine::castlingKey[16];
+uint64_t Engine::epKey[8];
 
 Engine::Engine()
 {
-    
+
+}
+
+void Engine::InitZobrist()
+{
+    std::mt19937_64 rng(123456);
+    std::uniform_int_distribution<uint64_t> dist;
+
+    for (int r = 0; r < 8; r++)
+    {
+        for (int c = 0; c < 8; c++)
+        {
+            for (int i = 0; i < 12; i++)
+            {
+                pieceSquareVals[r][c][i] = dist(rng);
+            }
+        }
+    }
+
+    sideKey = dist(rng);
+
+    for (int i = 0; i < 16; i++)
+    {
+        castlingKey[i] = dist(rng);
+    }
+    for (int i = 0; i < 8; i++)
+    {
+        epKey[i] = dist(rng);
+    }
 }
 
 int Engine::GetMoveScore(const Move& move, Board& board)
@@ -32,6 +66,7 @@ void Engine::OrderMoves(std::vector<Move>& moves, Board& board)
     {
         move.orderingScore = GetMoveScore(move, board);
     }
+
     std::sort(moves.begin(), moves.end(), [&board, this](const Move& move1, const Move& move2)
         {
             return move1.orderingScore > move2.orderingScore;

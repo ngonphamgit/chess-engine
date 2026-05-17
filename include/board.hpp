@@ -26,6 +26,8 @@ class Board
     int blackKingRow = 0;
     int blackKingCol = 4;
 
+    uint64_t hash;
+
     int dir[8][2] = {
         {1, 0}, //s
         {0, 1}, //e
@@ -54,6 +56,7 @@ class Board
     void SetupBoard();
     void PrintBoard();
 
+    int PieceIndex(char piece); //used for zobrist hashing
     std::string SquareToString(int row, int col);
     Move ParseMove(std::string input);
 
