@@ -31,6 +31,16 @@ struct Move
     PromoteType promoteType;
 
     int orderingScore;
+
+    bool operator==(const Move& other) const
+    {
+        return fromRow == other.fromRow &&
+               fromCol == other.fromCol &&
+               toRow == other.toRow &&
+               toCol == other.toCol &&
+               moveType == other.moveType &&
+               promoteType == other.promoteType;
+    }
 };
 
 struct UndoMove

@@ -13,11 +13,12 @@ int main()
     board.SetupBoard();
 
     Engine engine;
+    Engine::InitZobrist();
 
     auto start =
         std::chrono::high_resolution_clock::now();
 
-    Move move = engine.GetBestMove(board, 5, true);
+    Move move = engine.GetBestMove(board, 6, true);
 
     auto end =
         std::chrono::high_resolution_clock::now();
@@ -34,7 +35,7 @@ int main()
     {
         board.PrintBoard();
         
-        if (board.color == 'b')
+        if (board.color == 'w')
         {
             std::string inputMove;
 
@@ -47,7 +48,7 @@ int main()
         else
         {
             auto start = std::chrono::high_resolution_clock::now();
-            Move move = engine.GetBestMove(board, 6, true);
+            Move move = engine.GetBestMove(board, 6, false);
             auto end = std::chrono::high_resolution_clock::now();
 
             std::chrono::duration<double> elapsed = end - start;

@@ -1075,12 +1075,12 @@ void Board::GetKingMoves(int row, int col, std::vector<Move>& moves)
         if (IsWhitePiece(row, col))
         {
             if (IsBlackPiece(newRow, newCol)) moves.push_back({row, col, newRow, newCol, this->board[row][col], CAPTURE});
-            else moves.push_back({row, col, newRow, newCol, this->board[row][col], NORMAL});
+            else if (IsEmptySquare(newRow, newCol)) moves.push_back({row, col, newRow, newCol, this->board[row][col], NORMAL});
         }
         else
         {
             if (IsWhitePiece(newRow, newCol)) moves.push_back({row, col, newRow, newCol, this->board[row][col], CAPTURE});
-            else moves.push_back({row, col, newRow, newCol, this->board[row][col], NORMAL});
+            else if (IsEmptySquare(newRow, newCol)) moves.push_back({row, col, newRow, newCol, this->board[row][col], NORMAL});
         }
     }
 
@@ -1206,6 +1206,7 @@ void Board::SwitchColors()
 
 UndoMove Board::MakeMove(const Move& move)
 {
+    //std::cout << "Start Make Hash: " << this->hash << std::endl;
     UndoMove undo;
 
     char fromPiece = this->board[move.fromRow][move.fromCol];
@@ -1226,8 +1227,28 @@ UndoMove Board::MakeMove(const Move& move)
     undo.blackKingSide = blackKingSide;
     undo.blackQueenSide = blackQueenSide;
 
+    //remove capturing piece from from-square
     this->hash ^= Engine::pieceSquareVals[move.fromRow][move.fromCol][fromIndex];
+    //remove captured piece from to-square
+    if (toPiece != '.')
+    {
+        this->hash ^= Engine::pieceSquareVals[move.toRow][move.toCol][toIndex];
+    }
+    //add capturing piece to to-square
     this->hash ^= Engine::pieceSquareVals[move.toRow][move.toCol][fromIndex];
+    this->hash ^= Engine::sideKey;
+
+    if (this->enPassantCol != -1)
+    {
+        this->hash ^= Engine::epKey[this->enPassantCol];
+    }
+
+    int oldCastleIndex =
+    (whiteKingSide  ? 1 : 0) |
+    (whiteQueenSide ? 2 : 0) |
+    (blackKingSide  ? 4 : 0) |
+    (blackQueenSide ? 8 : 0);
+    this->hash ^= Engine::castlingKey[oldCastleIndex];
 
     //can't castle after moving king
     if (fromPiece == 'K')
@@ -1263,8 +1284,8 @@ UndoMove Board::MakeMove(const Move& move)
         if (move.toRow == 0 && move.toCol == 0) blackQueenSide = false;
     }
 
-    
-    if (move.moveType == NORMAL || move.moveType == CAPTURE)
+    //apply normal moves
+    if (move.moveType != CASTLEKING && move.moveType != CASTLEQUEEN)
     {
         this->board[move.fromRow][move.fromCol] = '.';
         this->board[move.toRow][move.toCol] = fromPiece;
@@ -1287,11 +1308,15 @@ UndoMove Board::MakeMove(const Move& move)
         {
             if (fromPiece == 'P')
             {
+                int pawnIndex = PieceIndex('p');
                 this->board[move.toRow + 1][move.toCol] = '.';
+                hash ^= Engine::pieceSquareVals[move.toRow + 1][move.toCol][pawnIndex];
             }
             else if (fromPiece == 'p')
             {
+                int pawnIndex = PieceIndex('P');
                 this->board[move.toRow - 1][move.toCol] = '.';
+                hash ^= Engine::pieceSquareVals[move.toRow - 1][move.toCol][pawnIndex];
             }
         }
         else if (move.moveType == PAWNDOUBLE)
@@ -1379,6 +1404,10 @@ UndoMove Board::MakeMove(const Move& move)
             board[7][7] = '.';
             board[7][5] = 'R';
 
+            int rookIndex = PieceIndex('R');
+            this->hash ^= Engine::pieceSquareVals[7][7][rookIndex];
+            this->hash ^= Engine::pieceSquareVals[7][5][rookIndex];
+
             this->whiteKingRow = 7;
             this->whiteKingCol = 6;
         }
@@ -1389,6 +1418,10 @@ UndoMove Board::MakeMove(const Move& move)
 
             board[0][7] = '.';
             board[0][5] = 'r';
+
+            int rookIndex = PieceIndex('r');
+            this->hash ^= Engine::pieceSquareVals[0][7][rookIndex];
+            this->hash ^= Engine::pieceSquareVals[0][5][rookIndex];
 
             this->blackKingRow = 0;
             this->blackKingCol = 6;
@@ -1407,6 +1440,10 @@ UndoMove Board::MakeMove(const Move& move)
             board[7][0] = '.';
             board[7][3] = 'R';
 
+            int rookIndex = PieceIndex('R');
+            this->hash ^= Engine::pieceSquareVals[7][0][rookIndex];
+            this->hash ^= Engine::pieceSquareVals[7][3][rookIndex];
+
             this->whiteKingRow = 7;
             this->whiteKingCol = 2;
         }
@@ -1418,23 +1455,54 @@ UndoMove Board::MakeMove(const Move& move)
             board[0][0] = '.';
             board[0][3] = 'r';
 
+            int rookIndex = PieceIndex('r');
+            this->hash ^= Engine::pieceSquareVals[0][0][rookIndex];
+            this->hash ^= Engine::pieceSquareVals[0][3][rookIndex];
+
             this->blackKingRow = 0;
             this->blackKingCol = 2;
         }
     }
 
+    int newCastleIndex =
+    (whiteKingSide  ? 1 : 0) |
+    (whiteQueenSide ? 2 : 0) |
+    (blackKingSide  ? 4 : 0) |
+    (blackQueenSide ? 8 : 0);
+    this->hash ^= Engine::castlingKey[newCastleIndex];
+
+    if (this->enPassantCol != -1)
+    {
+        this->hash ^= Engine::epKey[this->enPassantCol];
+    }
+
     SwitchColors();
+
+    //std::cout << "End Make Hash: " << this->hash << std::endl;
 
     return undo;
 }
 
 void Board::UnmakeMove(const Move& move, const UndoMove& undo)
 {
+    //std::cout << "Start Unmake Hash: " << this->hash << std::endl;
     char fromPiece = undo.pieceMoved;
     char toPiece = undo.pieceCaptured;
 
     int fromIndex = PieceIndex(fromPiece);
     int toIndex = PieceIndex(toPiece);
+
+    int newCastleIndex =
+    (whiteKingSide  ? 1 : 0) |
+    (whiteQueenSide ? 2 : 0) |
+    (blackKingSide  ? 4 : 0) |
+    (blackQueenSide ? 8 : 0);
+    this->hash ^= Engine::castlingKey[newCastleIndex];
+
+    if (this->enPassantCol != -1)
+    {
+        this->hash ^= Engine::epKey[this->enPassantCol];
+    }
 
     this->color = undo.lastColor;
 
@@ -1452,6 +1520,19 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
     {
         this->hash ^= Engine::pieceSquareVals[move.toRow][move.toCol][toIndex];
     }
+    this->hash ^= Engine::sideKey;
+
+    if (this->enPassantCol != -1)
+    {
+        this->hash ^= Engine::epKey[this->enPassantCol];
+    }
+
+    int oldCastleIndex =
+    (undo.whiteKingSide  ? 1 : 0) |
+    (undo.whiteQueenSide ? 2 : 0) |
+    (undo.blackKingSide  ? 4 : 0) |
+    (undo.blackQueenSide ? 8 : 0);
+    this->hash ^= Engine::castlingKey[oldCastleIndex];
 
     if (move.moveType == CASTLEKING)
     {
@@ -1531,4 +1612,6 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
             }
         }
     }
+
+    //std::cout << "End Unmake Hash: " << this->hash << std::endl;
 }
