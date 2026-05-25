@@ -6,9 +6,11 @@
 #include <vector>
 #include <cctype>
 #include <cstring>
+#include <cstdint>
 
 void Board::SetupBoard()
 {
+    /*
     std::string start[8] = 
     {
         "rnbqkbnr",
@@ -28,6 +30,115 @@ void Board::SetupBoard()
             this->board[r][c] = start[r][c];
         }
     }
+    */
+
+    this->whitePieces = 0x000000000000FFFFULL;
+    this->whitePawns   = 0x000000000000FF00ULL;
+    this->whiteRooks   = 0x0000000000000081ULL;
+    this->whiteKnights = 0x0000000000000042ULL;
+    this->whiteBishops = 0x0000000000000024ULL;
+    this->whiteQueens  = 0x0000000000000008ULL;
+    this->whiteKing    = 0x0000000000000010ULL;
+
+    this->blackPieces = 0xFFFF000000000000ULL;
+    this->blackPawns   = 0x00FF000000000000ULL;
+    this->blackRooks   = 0x8100000000000000ULL;
+    this->blackKnights = 0x4200000000000000ULL;
+    this->blackBishops = 0x2400000000000000ULL;
+    this->blackQueens  = 0x0800000000000000ULL;
+    this->blackKing    = 0x1000000000000000ULL;
+
+    //generate pawn attacks
+    for (int r = 0; r < 8; r++)
+    {
+        for (int c = 0; c < 8; c++)
+        {
+            uint64_t whiteAttacks = 0ULL;
+            uint64_t blackAttacks = 0ULL;
+            int index = r * 8 + c;
+            uint64_t whitePawn = 1ULL << index;
+            uint64_t blackPawn = 1ULL << index;
+            
+            if (!(whitePawn & FILE_A)) whiteAttacks |= whitePawn << 7;
+            if (!(whitePawn & FILE_H)) whiteAttacks |= whitePawn << 9;
+            if (!(blackPawn & FILE_A)) blackAttacks |= blackPawn >> 9;
+            if (!(blackPawn & FILE_H)) blackAttacks |= blackPawn >> 7;
+        }
+    }
+
+    int knightDirs[8][2] = {
+        {2, 1},
+        {-2, 1},
+        {2, -1},
+        {-2, -1},
+        {1, 2},
+        {-1, 2},
+        {1, -2},
+        {-1, -2}
+    }
+    //generate knight attacks
+    for (int r = 0; r < 8; r++)
+    {
+        for (int c = 0; c < 8; c++)
+        {
+            uint64_t attacks = 0ULL;
+
+            for (int i = 0; i < 8; i++)
+            {
+                int dirRow = knightDirs[i][0];
+                int dirCol = knightDirs[i][1];
+
+                int newRow = r + dirRow;
+                int newCol = c + dirCol;
+
+                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
+                {
+                    int attackSq = newRow * 8 + newCol;
+                    attacks |= 1ULL << attackSq;
+                }
+            }
+
+            this->knightAttacks[r][c] = attacks;
+        }
+    }
+
+    int kingDirs[8][2] = {
+        {1, 0},
+        {0, 1},
+        {-1, 0},
+        {0, -1},
+        {1, -1},
+        {-1, 1},
+        {1, 1},
+        {-1, -1}
+    };
+    //generate king attacks
+    for (int r = 0; r < 8; r++)
+    {
+        for (int c = 0; c < 8; c++)
+        {
+            uint64_t attacks = 0ULL;
+
+            for (int i = 0; i < 8; i++)
+            {
+                int dirRow = kingDirs[i][0];
+                int dirCol = kingDirs[i][1];
+
+                int newRow = r + dirRow;
+                int newCol = c + dirCol;
+
+                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
+                {
+                    int attackSq = newRow * 8 + newCol;
+                    attacks |= 1ULL << attackSq;
+                }
+            }
+
+            this->kingAttacks[r][c] = attacks;
+        }
+    }
+
+    this->occupiedSquares = whitePieces | blackPieces;
 
     this->color = 'w';
     this->enPassantRow = -1;
@@ -42,11 +153,39 @@ void Board::SetupBoard()
 
 void Board::PrintBoard()
 {
-     for (int r = 0; r < 8; r++)
+    /*
+    for (int r = 0; r < 8; r++)
     {
         for (int c = 0; c < 8; c++)
         {
             std::cout << this->board[r][c] << " ";
+        }
+        std::cout << std::endl;
+    }
+    */
+
+    for (int r = 7; r >= 0; r--)
+    {
+        for (int c = 0; c < 8; c++)
+        {
+            int index = r * 8 + c;
+            uint64_t mask = 1ULL << index;
+
+            if (whitePawns & mask) std::cout << "P ";
+            else if (whiteKnights & mask) std::cout << "N ";
+            else if (whiteBishops & mask) std::cout << "B ";
+            else if (whiteRooks & mask) std::cout << "R ";
+            else if (whiteQueens & mask) std::cout << "Q ";
+            else if (whiteKing & mask) std::cout << "K ";
+
+            else if (blackPawns & mask) std::cout << "p ";
+            else if (blackKnights & mask) std::cout << "n ";
+            else if (blackBishops & mask) std::cout << "b ";
+            else if (blackRooks & mask) std::cout << "r ";
+            else if (blackQueens & mask) std::cout << "q ";
+            else if (blackKing & mask) std::cout << "k ";
+
+            else std::cout << ". ";
         }
         std::cout << std::endl;
     }
@@ -143,43 +282,68 @@ Move Board::ParseMove(std::string input)
 
 bool Board::IsWhitePiece(int row, int col)
 {
+    /*
     char piece = this->board[row][col];
 
     if (std::isupper(piece)) return true;
+    return false;
+    */
+
+    int index = row * 8 + col;
+    if (whitePieces & (1ULL << index)) return true;
     return false;
 }
 
 bool Board::IsBlackPiece(int row, int col)
 {
+    /*
     char piece = this->board[row][col];
 
     if (std::islower(piece)) return true;
+    return false;
+    */
+    
+    int index = row * 8 + col;
+    if (blackPieces & (1ULL << index)) return true;
     return false;
 }
 
 bool Board::IsEmptySquare(int row, int col)
 {
+    /*
     char piece = this->board[row][col];
 
     if (piece == '.') return true;
+    return false;
+    */
+
+    int index = row * 8 + col;
+    if (!(occupiedSquares & (1ULL))) return true;
     return false;
 }
 
 bool Board::IsSquareAttacked(int row, int col, char attackerColor) 
 {
+    int index = row * 8 + col; //square to check
+
     //check pawns
     if (attackerColor == 'w')
     {
-        if (this->board[row + 1][col + 1] == 'P' || this->board[row + 1][col - 1] == 'P') return true; 
+        if (whitePawns & (1ULL << (index - 7)) & ~FILE_A) return true;
+        if (whitePawns & (1ULL << (index - 9)) & ~FILE_H) return true;
     }
     else
     {
-        if (this->board[row - 1][col + 1] == 'p' || this->board[row - 1][col - 1] == 'p') return true; 
+        if (blackPawns & (1ULL << (index + 7)) & ~FILE_A) return true;
+        if (blackPawns & (1ULL << (index + 9)) & ~FILE_H) return true;
     }
 
     //check knights
     for (int i = 0; i < 8; i++)
     {
+        
+
+        /*
         int dirRow = knightOffsets[i][0];
         int dirCol = knightOffsets[i][1];
 
@@ -193,6 +357,7 @@ bool Board::IsSquareAttacked(int row, int col, char attackerColor)
 
         if (piece == 'N' && attackerColor == 'w') return true;
         if (piece == 'n' && attackerColor == 'b') return true;
+        */
     }
 
     //check sliding pieces

@@ -7,6 +7,7 @@
 #include <iostream>
 #include <cctype>
 #include <random>
+#include <cstdint>
 
 uint64_t Engine::pieceSquareVals[8][8][12];
 uint64_t Engine::sideKey;
