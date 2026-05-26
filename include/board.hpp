@@ -68,33 +68,24 @@ class Board
 
     uint64_t hash;
 
-    /*
-    int dir[8][2] = {
-        {1, 0}, //s
-        {0, 1}, //e
-        {-1, 0}, //n
-        {0, -1}, //w
-        {1, 1}, //se
-        {1, -1}, //sw
-        {-1, 1}, //ne
-        {-1, -1} //nw
-    };
-    int knightOffsets[8][2] = {
-        {-2, -1},
-        {-2,  1},
-        {-1, -2},
-        {-1,  2},
-        { 1, -2},
-        { 1,  2},
-        { 2, -1},
-        { 2,  1}
-    };
-    */
-
     uint64_t whitePawnAttacks[8][8];
-    uint64_t blackPawnAttacks[8][8]''
+    uint64_t blackPawnAttacks[8][8];
     uint64_t knightAttacks[8][8];
     uint64_t kingAttacks[8][8];
+
+    int rookRays[8][2] = {
+        {1, 0},
+        {0, 1},
+        {-1, 0},
+        {0, -1},
+    };
+
+    int bishopRays[4][2] = {
+        {1, -1},
+        {-1, 1},
+        {1, 1},
+        {-1, -1}
+    };
 
     char color;
     int enPassantRow;

@@ -75,7 +75,7 @@ void Board::SetupBoard()
         {-1, 2},
         {1, -2},
         {-1, -2}
-    }
+    };
     //generate knight attacks
     for (int r = 0; r < 8; r++)
     {
@@ -147,8 +147,6 @@ void Board::SetupBoard()
     this->whiteQueenSide = true;
     this->blackKingSide = true;
     this->blackQueenSide = true;
-
-    this->SetupControlMaps();
 }
 
 void Board::PrintBoard()
@@ -325,6 +323,7 @@ bool Board::IsEmptySquare(int row, int col)
 bool Board::IsSquareAttacked(int row, int col, char attackerColor) 
 {
     int index = row * 8 + col; //square to check
+    uint64_t sq = 1ULL << index;
 
     //check pawns
     if (attackerColor == 'w')
@@ -338,62 +337,71 @@ bool Board::IsSquareAttacked(int row, int col, char attackerColor)
         if (blackPawns & (1ULL << (index + 9)) & ~FILE_H) return true;
     }
 
-    //check knights
-    for (int i = 0; i < 8; i++)
+    //check king and knight attacks
+    uint64_t currKnightAttacks = knightAttacks[row][col];
+    uint64_t currKingAttacks = kingAttacks[row][col];
+    if (attackerColor == 'w')
     {
-        
-
-        /*
-        int dirRow = knightOffsets[i][0];
-        int dirCol = knightOffsets[i][1];
-
-        int newRow = row + dirRow;
-        int newCol = col + dirCol;
-
-        if (newRow < 0 || newRow >= 8) continue;
-        if (newCol < 0 || newCol >= 8) continue;
-
-        char piece = this->board[newRow][newCol];
-
-        if (piece == 'N' && attackerColor == 'w') return true;
-        if (piece == 'n' && attackerColor == 'b') return true;
-        */
+        if (currKnightAttacks & whiteKnights) return true;
+        if (currKingAttacks & whiteKing) return true;
+    }
+    else
+    {
+        if (currKnightAttacks & blackKnights) return true;
+        if (currKingAttacks & blackKing) return true;
     }
 
-    //check sliding pieces
-    for (int i = 0; i < 8; i++)
+    //check diagonal rays
+    for (int i = 0; i < 4; i++)
     {
-        int dirRow = dir[i][0];
-        int dirCol = dir[i][1];
+        int dirRow = bishopRays[i][0];
+        int dirCol = bishopRays[i][1];
 
         int newRow = row + dirRow;
         int newCol = col + dirCol;
-
+        
         while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
         {
-            char piece = this->board[newRow][newCol];
-            char lower = std::tolower(piece);
+            int newIndex = newRow * 8 + newCol;
+            uint64_t newSq = 1ULL << newIndex;
 
-            switch (lower)
+            if (attackerColor == 'w')
             {
-                case 'b':
-                case 'r':
-                case 'q':
-                {
-                    if (i >= 4 && lower == 'r') break;
-                    if (i < 4 && lower == 'b') break;
+                if ((whiteBishops | whiteQueens) & newSq) return true;
+            }
+            else
+            {
+                if ((blackBishops | blackQueens) & newSq) return true;
+            }
 
-                    if (attackerColor == 'w')
-                    {
-                        if (piece == 'B' || piece == 'R' || piece == 'Q') return true;
-                    }
-                    else
-                    {
-                        if (piece == 'b' || piece == 'r' || piece == 'q') return true;
-                    }
-                    
-                    break;
-                }
+            if (occupiedSquares & newSq) break;
+
+            newRow += dirRow;
+            newCol += dirCol;
+        }
+    }
+
+    //check straight rays
+    for (int i = 0; i < 4; i++)
+    {
+        int dirRow = rookRays[i][0];
+        int dirCol = rookRays[i][1];
+
+        int newRow = row + dirRow;
+        int newCol = col + dirCol;
+        
+        while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
+        {
+            int newIndex = newRow * 8 + newCol;
+            uint64_t newSq = 1ULL << newIndex;
+
+            if (attackerColor == 'w')
+            {
+                if ((whiteRooks | whiteQueens) & newSq) return true;
+            }
+            else
+            {
+                if ((blackRooks | blackQueens) & newSq) return true;
             }
 
             newRow += dirRow;
@@ -420,10 +428,11 @@ bool Board::IsKingChecked(char color)
         kingCol = this->blackKingCol;
     }
     
-    auto& enemyMap = (color == 'w') ? blackControl : whiteControl;
-    return (enemyMap[kingRow][kingCol] == 1);
+    char enemyColor = (color == 'w') ? 'b' : 'w';
+    return IsSquareAttacked(kingRow, kingCol, enemyColor);
 }
 
+/*
 void Board::SetupControlMaps()
 {
     std::memset(whiteControl, 0, sizeof(whiteControl));
@@ -913,6 +922,7 @@ void Board::UpdateControlMaps(int fromRow, int fromCol, int toRow, int toCol)
         }
     }
 }
+    */
 
 void Board::GetPawnMoves(int row, int col, std::vector<Move>& moves)
 {
