@@ -336,13 +336,11 @@ bool Board::IsSquareAttacked(int row, int col, char attackerColor)
     //check pawns
     if (attackerColor == 'w')
     {
-        if (whitePawns & (1ULL << (index - 7)) & ~FILE_A) return true;
-        if (whitePawns & (1ULL << (index - 9)) & ~FILE_H) return true;
+        if (whitePawns & blackPawnAttacks[row][col]) return true;
     }
     else
     {
-        if (blackPawns & (1ULL << (index + 7)) & ~FILE_A) return true;
-        if (blackPawns & (1ULL << (index + 9)) & ~FILE_H) return true;
+        if (blackPawns & whitePawnAttacks[row][col]) return true;
     }
 
     //check king and knight attacks
@@ -643,50 +641,42 @@ void Board::GetBishopMoves(int row, int col, std::vector<Move>& moves)
 
 void Board::GetRookMoves(int row, int col, std::vector<Move>& moves)
 {
-    int dir[4][2] = {
-        {1, 0},
-        {0, 1},
-        {-1, 0},
-        {0, -1}
-    };
+    int currIndex = row * 8 + col;
 
     for (int i = 0; i < 4; i++)
     {
-        int dirRow = dir[i][0];
-        int dirCol = dir[i][1];
+        int dirRow = rookRays[i][0];
+        int dirCol = rookRays[i][1];
 
         int newRow = row + dirRow;
         int newCol = col + dirCol;
 
         while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
         {
-            if (IsWhitePiece(row, col))
+            int newIndex = newRow * 8 + newCol;
+            uint64_t newSq = 1ULL << newIndex;
+
+            if (this->color == 'w')
             {
                 //stop if target square is a friendly piece
-                if (IsWhitePiece(newRow, newCol)) break;
+                if (whitePieces & newSq) break;
                 //stop if target square is an enemy piece
-                else if (IsBlackPiece(newRow, newCol))
+                else if (blackPieces & newSq)
                 {
-                    moves.push_back({row, col, newRow, newCol, this->board[row][col], CAPTURE});
+                    moves.push_back({currIndex, newIndex, CAPTURE});
                     break;
                 }
-                else
-                {
-                    moves.push_back({row, col, newRow, newCol, this->board[row][col], NORMAL});
-                }
+                else moves.push_back({currIndex, newIndex, NORMAL});
             }
-            if (IsBlackPiece(row, col))
+            else
             {
-                if (IsBlackPiece(newRow, newCol)) break;
-                else if (IsWhitePiece(newRow, newCol))
+                if (blackPieces & newSq) break;
+                else if (whitePieces & newSq)
                 {
-                    moves.push_back({row, col, newRow, newCol, this->board[row][col], CAPTURE});
+                    moves.push_back({currIndex, newIndex, CAPTURE});
                     break;
                 }
-                else
-                {
-                    moves.push_back({row, col, newRow, newCol, this->board[row][col], NORMAL});
-                }
+                else moves.push_back({currIndex, newIndex, NORMAL});
             }
 
             newRow += dirRow;
@@ -703,84 +693,73 @@ void Board::GetQueenMoves(int row, int col, std::vector<Move>& moves)
 
 void Board::GetKingMoves(int row, int col, std::vector<Move>& moves)
 {
-    int dir[8][2] = {
-        {1, 0},
-        {0, 1},
-        {-1, 0},
-        {0, -1},
-        {1, 1},
-        {1, -1},
-        {-1, 1},
-        {-1, -1}
-    };
+    uint64_t attacks = kingAttacks[row][col];
+    int currIndex = row * 8 + col;
 
-    for (int i = 0; i < 8; i++)
+    while (attacks)
     {
-        int newRow = row + dir[i][0];
-        int newCol = col + dir[i][1];
+        int toIndex = PopLSB(attacks);
+        uint64_t newSq = 1ULL << toIndex;
 
-        if (newRow < 0 || newRow >= 8) continue;
-        if (newCol < 0 || newCol >= 8) continue;
-
-        if (IsWhitePiece(row, col))
+        if (this->color == 'w')
         {
-            if (IsBlackPiece(newRow, newCol)) moves.push_back({row, col, newRow, newCol, this->board[row][col], CAPTURE});
-            else if (IsEmptySquare(newRow, newCol)) moves.push_back({row, col, newRow, newCol, this->board[row][col], NORMAL});
+            if (blackPieces & newSq) moves.push_back({currIndex, toIndex, CAPTURE})
         }
         else
         {
-            if (IsWhitePiece(newRow, newCol)) moves.push_back({row, col, newRow, newCol, this->board[row][col], CAPTURE});
-            else if (IsEmptySquare(newRow, newCol)) moves.push_back({row, col, newRow, newCol, this->board[row][col], NORMAL});
+            if (whitePieces & newSq) moves.push_back({currIndex, toIndex, CAPTURE})
         }
+    
+        if (!(occupiedSquares & newSq)) moves.push_back({currIndex, toIndex, NORMAL});
     }
 
     //castling
-    if (IsWhitePiece(row, col))
+    if (this->color == 'w')
     {
         if (this->whiteKingSide 
-            && IsEmptySquare(row, col + 1) 
-            && IsEmptySquare(row, col + 2)
+            && !(occupiedSquares & (1ULL << (currIndex + 1))) 
+            && !(occupiedSquares & (1ULL << (currIndex + 2)))
             && !IsKingChecked('w')
             && !IsSquareAttacked(row, col + 1, 'b')
             && !IsSquareAttacked(row, col + 2, 'b')
-            && this->board[row][7] == 'R')
+            && (whiteRooks & (1ULL << 7)))
         {
-            moves.push_back({row, col, row, col + 2, this->board[row][col], CASTLEKING});
+            moves.push_back({currIndex, currIndex + 2, CASTLEKING});
         }
         if (this->whiteQueenSide 
-            && IsEmptySquare(row, col - 1) 
-            && IsEmptySquare(row, col - 2)
-            && IsEmptySquare(row, col - 3)
+            && !(occupiedSquares & (1ULL << (currIndex - 1))) 
+            && !(occupiedSquares & (1ULL << (currIndex - 2)))
+            && !(occupiedSquares & (1ULL << (currIndex - 3)))
             && !IsKingChecked('w')
             && !IsSquareAttacked(row, col - 1, 'b')
             && !IsSquareAttacked(row, col - 2, 'b')
-            && this->board[row][0] == 'R')
+            && (whiteRooks & (1ULL << 0)))
         {
-            moves.push_back({row, col, row, col - 2, this->board[row][col], CASTLEQUEEN});
+            moves.push_back({currIndex, currIndex - 2, CASTLEQUEEN});
         }
     }
     else
     {
         if (this->blackKingSide 
-            && IsEmptySquare(row, col + 1) 
-            && IsEmptySquare(row, col + 2)
+            && !(occupiedSquares & (1ULL << (currIndex + 1))) 
+            && !(occupiedSquares & (1ULL << (currIndex + 2)))
             && !IsKingChecked('b')
             && !IsSquareAttacked(row, col + 1, 'w')
             && !IsSquareAttacked(row, col + 2, 'w')
-            && this->board[row][7] == 'r')
+            && (blackRooks & (1ULL << 63)))
         {
-            moves.push_back({row, col, row, col + 2, this->board[row][col], CASTLEKING});
+            moves.push_back({currIndex, currIndex + 2, CASTLEKING});
         }
         if (this->blackQueenSide 
-            && IsEmptySquare(row, col - 1) 
-            && IsEmptySquare(row, col - 2)
-            && IsEmptySquare(row, col - 3)
+            && !(occupiedSquares & (1ULL << (currIndex - 1))) 
+            && !(occupiedSquares & (1ULL << (currIndex - 2)))
+            && !(occupiedSquares & (1ULL << (currIndex - 3)))
             && !IsKingChecked('b')
             && !IsSquareAttacked(row, col - 1, 'w')
             && !IsSquareAttacked(row, col - 2, 'w')
-            && this->board[row][0] == 'r')
+            && (blackRooks & (1ULL << 56)))
         {
-            moves.push_back({row, col, row, col - 2, this->board[row][col], CASTLEQUEEN});
+            moves.push_back({currIndex, currIndex - 2, CASTLEQUEEN});
         }
     }
 }
