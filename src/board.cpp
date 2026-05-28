@@ -440,505 +440,13 @@ bool Board::IsKingChecked(char color)
     return IsSquareAttacked(kingRow, kingCol, enemyColor);
 }
 
-/*
-void Board::SetupControlMaps()
-{
-    std::memset(whiteControl, 0, sizeof(whiteControl));
-    std::memset(blackControl, 0, sizeof(blackControl));
-    whiteControlSquares = 0;
-    blackControlSquares = 0;
-
-    for (int r = 0; r < 8; r++)
-    {
-        for (int c = 0; c < 8; c ++)
-        {
-            if (IsEmptySquare(r, c)) continue;
-
-            bool isWhite = IsWhitePiece(r, c);
-            char piece = std::tolower(board[r][c]);
-
-            switch (piece)
-            {
-                case 'p':
-                {
-                    int dir = isWhite ? -1 : 1;
-
-                    int newRow = r + dir;
-                    if (newRow >= 0 && newRow < 8)
-                    {
-                        if (c - 1 >= 0)
-                        {
-                            if (isWhite)
-                            {
-                                whiteControl[newRow][c - 1]++;
-                                whiteControlSquares++;
-                            }
-                            else
-                            {
-                                blackControl[newRow][c - 1]++;
-                                blackControlSquares++;
-                            }
-                        }
-
-                        if (c + 1 < 8)
-                        {
-                            if (isWhite)
-                            {
-                                whiteControl[newRow][c + 1]++;
-                                whiteControlSquares++;
-                            }
-                            else
-                            {
-                                blackControl[newRow][c + 1]++;
-                                blackControlSquares++;
-                            } 
-                        }
-                    }
-
-                    break;
-                }
-                case 'n':
-                {
-                    int offsets[8][2]
-                    {
-                        {-2, -1},
-                        {-2,  1},
-                        {-1, -2},
-                        {-1,  2},
-                        { 1, -2},
-                        { 1,  2},
-                        { 2, -1},
-                        { 2,  1}
-                    };
-
-                    for (int i = 0; i < 8; i++)
-                    {
-                        int newRow = r + offsets[i][0];
-                        int newCol = c + offsets[i][1];
-
-                        if (newRow < 0 || newRow >= 8) continue;
-                        if (newCol < 0 || newCol >= 8) continue;
-
-                        if (isWhite)
-                        {
-                            whiteControl[newRow][newCol]++;
-                            whiteControlSquares++;
-                        }
-                        else
-                        {
-                            blackControl[newRow][newCol]++;
-                            blackControlSquares++;
-                        }
-                    }
-
-                    break;
-                }
-                case 'b':
-                case 'r':
-                case 'q':
-                {
-                    int dir[8][2] = {
-                        {1, 0},
-                        {0, 1},
-                        {-1, 0},
-                        {0, -1},
-                        {1, 1},
-                        {1, -1},
-                        {-1, 1},
-                        {-1, -1}
-                    };
-
-                    int start = 0;
-                    int end = 8;
-
-                    if (piece == 'b')
-                    {
-                        start = 4;
-                    }
-                    else if (piece == 'r')
-                    {
-                        end = 4;
-                    }
-
-                    for (int i = start; i < end; i++)
-                    {
-                        int dirRow = dir[i][0];
-                        int dirCol = dir[i][1];
-
-                        int curRow = r + dirRow;
-                        int curCol = c + dirCol;
-
-                        while (curRow >= 0 && curRow < 8 && curCol >= 0 && curCol < 8)
-                        {
-                            if (isWhite)
-                            {
-                                whiteControl[curRow][curCol]++;
-                                whiteControlSquares++;
-                            }
-                            else
-                            {
-                                blackControl[curRow][curCol]++;
-                                blackControlSquares++;
-                            }
-
-                            if (!IsEmptySquare(curRow, curCol)) break;
-
-                            curRow += dirRow;
-                            curCol += dirCol;
-                        }
-                    }
-
-                    break;
-                }
-                case 'k':
-                {
-                    int dir[8][2] = {
-                        {1, 0},
-                        {0, 1},
-                        {-1, 0},
-                        {0, -1},
-                        {1, 1},
-                        {1, -1},
-                        {-1, 1},
-                        {-1, -1}
-                    };
-
-                    for (int i = 0; i < 8; i++)
-                    {
-                        int newRow = r + dir[i][0];
-                        int newCol = c + dir[i][1];
-
-                        if (newRow < 0 || newRow >= 8) continue;
-                        if (newCol < 0 || newCol >= 8) continue;
-
-                        if (isWhite)
-                        {
-                            whiteControl[newRow][newCol]++;
-                            whiteControlSquares++;
-                        }
-                        else
-                        {
-                            blackControl[newRow][newCol]++;
-                            blackControlSquares++;
-                        }
-                    }
-
-                    break;
-                }
-            }
-        }
-    }
-}
-
-void Board::UpdateControlMaps(int fromRow, int fromCol, int toRow, int toCol)
-{
-    //fromsquare is the empty square, tosquare is the square the piece moved to
-    char fromPiece = this->board[fromRow][fromCol];
-    bool isWhite = std::isupper(fromPiece);
-    char lower = std::tolower(fromPiece);
-    
-    //remove old attack squares
-    switch (lower)
-    {
-        case 'p':
-        {
-            if (isWhite)
-            {
-                if (fromRow - 1 < 0) break;
-                if (fromCol - 1 >= 0)
-                {
-                    whiteControl[fromRow - 1][fromCol - 1]--;
-                    whiteControlSquares--;
-                }
-                if (fromCol + 1 < 8)
-                {
-                    whiteControl[fromRow - 1][fromCol + 1]--;
-                    whiteControlSquares--;
-                }
-            }
-            else
-            {
-                if (fromRow + 1 >= 8) break;
-                if (fromCol - 1 >= 0)
-                {
-                    blackControl[fromRow + 1][fromCol - 1]--;
-                    blackControlSquares--;
-                }
-                if (fromCol + 1 < 8)
-                {
-                    blackControl[fromRow + 1][fromCol + 1]--;
-                    blackControlSquares--;
-                }
-            }
-            break;
-        }
-        case 'b':
-        case 'r':
-        case 'q':
-        {
-            int start = 0;
-            int end = 8;
-
-            if (lower == 'b')
-            {
-                start = 4;
-            }
-            else if (lower == 'r')
-            {
-                end = 4;
-            }
-
-            for (int i = start; i < end; i++)
-            {
-                int dirRow = dir[i][0];
-                int dirCol = dir[i][1];
-
-                int newRow = fromRow + dirRow;
-                int newCol = fromCol + dirCol;
-
-                while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
-                {
-                    if (isWhite)
-                    {
-                        whiteControl[newRow][newCol]--;
-                        whiteControlSquares--;
-                    }
-                    else
-                    {
-                        blackControl[newRow][newCol]--;
-                        blackControlSquares--;
-                    }
-
-                    if (!IsEmptySquare(newRow, newCol)) break;
-
-                    newRow += dirRow;
-                    newCol += dirCol;
-                }
-            }
-
-            break;
-        }
-        case 'n':
-        case 'k':
-        {
-            for (int i = 0; i < 8; i++)
-            {
-                int newRow;
-                int newCol;
-
-                if (lower == 'n')
-                {
-                    newRow = fromRow + knightOffsets[i][0];
-                    newCol = fromCol + knightOffsets[i][1];
-                }
-                else
-                {
-                    newRow = fromRow + dir[i][0];
-                    newCol = fromCol + dir[i][1];
-                }
-
-                if (newRow < 0 || newRow >= 8) continue;
-                if (newCol < 0 || newCol >= 8) continue;
-
-                if (isWhite)
-                {
-                    whiteControl[newRow][newCol]--;
-                    whiteControlSquares--;
-                }
-                else
-                {
-                    blackControl[newRow][newCol]--;
-                    blackControlSquares--;
-                }
-            }
-            break;
-        }
-    }
-
-    //discover new attack rays passing through from-square
-    for (int i = 0; i < 8; i++)
-    {
-        int dirRow = dir[i][0];
-        int dirCol = dir[i][1];
-
-        int newRow = fromRow + dirRow;
-        int newCol = fromCol + dirCol;
-
-        bool pieceFound = false;
-        int pieceRow = -1;
-        int pieceCol = -1;
-        
-        //scan for any sliding piece in all 8 directions, and recompute their attack rays
-        while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
-        {
-            char piece = std::tolower(this->board[newRow][newCol]);
-
-            switch (piece)
-            {
-                case 'b':
-                case 'r':
-                case 'q':
-                {
-                    pieceFound = true;
-
-                    pieceRow = newRow;
-                    pieceCol = newCol;
-
-                    if (piece == 'b' && i < 4) break; // i < 4 are rook directions
-                    if (piece == 'r' && i >= 4) break; // i >= 4 are bishop directions
-
-                    int newDirRow = -dirRow;
-                    int newDirCol = -dirCol;
-
-                    int newNewRow = pieceRow + newDirRow;
-                    int newNewCol = pieceCol + newDirCol;
-
-                    //remove old attack squares
-                    while (newNewRow != fromRow || newNewCol != fromCol)
-                    {
-                        if (isWhite) {
-                            whiteControl[newNewRow][newNewCol]--;
-                            whiteControlSquares--;
-                        }
-                        else
-                        {
-                            blackControl[newNewRow][newNewCol]--;
-                            blackControlSquares--;
-                        }
-
-                        newNewRow += newDirRow;
-                        newNewCol += newDirCol;
-                    }
-
-                    newNewRow = pieceRow + newDirRow;
-                    newNewCol = pieceCol + newDirCol;
-
-                    //compute new discovered attack ray
-                    while (newNewRow >= 0 && newNewRow < 8 && newNewCol >= 0 && newNewCol < 8)
-                    {
-                        if (isWhite)
-                        {
-                            whiteControl[newNewRow][newNewCol]++;
-                            whiteControlSquares++;
-                        }
-                        else
-                        {
-                            blackControl[newNewRow][newNewCol]++;
-                            blackControlSquares++;
-                        }
-
-                        if (this->board[newNewRow][newNewCol] != '.') break;
-
-                        newNewRow += newDirRow;
-                        newNewCol += newDirCol;
-                    }
-
-                    break;
-                }
-            }
-
-            if (pieceFound) break;
-
-            newRow += dirRow;
-            newCol += dirCol;
-        }
-    }
-
-    //block attack rays on to-square
-    for (int i = 0; i < 8; i++)
-    {
-        int dirRow = dir[i][0];
-        int dirCol = dir[i][1];
-
-        int newRow = fromRow + dirRow;
-        int newCol = fromCol + dirCol;
-
-        bool pieceFound = false;
-        int pieceRow = -1;
-        int pieceCol = -1;
-
-        while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
-        {
-            char piece = std::tolower(this->board[newRow][newCol]);
-
-            switch (piece)
-            {
-                case 'b':
-                case 'r':
-                case 'q':
-                {
-                    pieceFound = true;
-
-                    pieceRow = newRow;
-                    pieceCol = newCol;
-
-                    if (piece == 'b' && i < 4) break; // i < 4 are rook directions
-                    if (piece == 'r' && i >= 4) break; // i >= 4 are bishop directions
-
-                    int newDirRow = -dirRow;
-                    int newDirCol = -dirCol;
-
-                    int newNewRow = pieceRow + newDirRow;
-                    int newNewCol = pieceCol + newDirCol;
-
-                    while (newNewRow >= 0 && newNewRow < 8 && newNewCol >= 0 && newNewCol < 8)
-                    {
-                        if (isWhite) {
-                            whiteControl[newNewRow][newNewCol]--;
-                            whiteControlSquares--;
-                        }
-                        else
-                        {
-                            blackControl[newNewRow][newNewCol]--;
-                            blackControlSquares--;
-                        }
-
-                        newNewRow += newDirRow;
-                        newNewCol += newDirCol;
-                    }
-
-                    newNewRow = pieceRow + newDirRow;
-                    newNewCol = pieceCol + newDirCol;
-
-                    while (newNewRow != fromRow || newNewCol != fromCol)
-                    {
-                        if (isWhite)
-                        {
-                            whiteControl[newNewRow][newNewCol]++;
-                            whiteControlSquares++;
-                        }
-                        else
-                        {
-                            blackControl[newNewRow][newNewCol]++;
-                            blackControlSquares++;
-                        }
-
-                        if (this->board[newNewRow][newNewCol] != '.') break;
-
-                        newNewRow += newDirRow;
-                        newNewCol += newDirCol;
-                    }
-
-                    break;
-                }
-            }
-
-            if (pieceFound) break;
-
-            newRow += dirRow;
-            newCol += dirCol;
-        }
-    }
-}
-    */
-
 void Board::GetPawnMoves(int row, int col, std::vector<Move>& moves)
 {
     int currIndex = row * 8 + col;
     uint64_t sq = 1ULL << currIndex;
     int epIndex = enPassantRow * 8 + enPassantCol;
 
-    if (whitePieces & sq)
+    if (this->color == 'w')
     {
         uint64_t singlePushes = (whitePawns << 8) & ~occupiedSquares;
         while (singlePushes)
@@ -1044,9 +552,8 @@ void Board::GetKnightMoves(int row, int col, std::vector<Move>& moves)
 {
     uint64_t attacks = knightAttacks[row][col];
     int currIndex = row * 8 + col;
-    uint64_t sq = 1ULL << currIndex;
 
-    if (whitePieces & sq)
+    if (this->color == 'w')
     {
         while (attacks)
         {
@@ -1090,50 +597,42 @@ void Board::GetKnightMoves(int row, int col, std::vector<Move>& moves)
 
 void Board::GetBishopMoves(int row, int col, std::vector<Move>& moves)
 {
-    int dir[4][2] = {
-        {1, 1},
-        {1, -1},
-        {-1, 1},
-        {-1, -1}
-    };
+    int currIndex = row * 8 + col;
 
     for (int i = 0; i < 4; i++)
     {
-        int dirRow = dir[i][0];
-        int dirCol = dir[i][1];
+        int dirRow = bishopRays[i][0];
+        int dirCol = bishopRays[i][1];
 
         int newRow = row + dirRow;
         int newCol = col + dirCol;
 
         while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
         {
-            if (IsWhitePiece(row, col))
+            int newIndex = newRow * 8 + newCol;
+            uint64_t newSq = 1ULL << newIndex;
+
+            if (this->color == 'w')
             {
                 //stop if target square is a friendly piece
-                if (IsWhitePiece(newRow, newCol)) break;
+                if (whitePieces & newSq) break;
                 //stop if target square is an enemy piece
-                else if (IsBlackPiece(newRow, newCol))
+                else if (blackPieces & newSq)
                 {
-                    moves.push_back({row, col, newRow, newCol, this->board[row][col], CAPTURE});
+                    moves.push_back({currIndex, newIndex, CAPTURE});
                     break;
                 }
-                else
-                {
-                    moves.push_back({row, col, newRow, newCol, this->board[row][col], NORMAL});
-                }
+                else moves.push_back({currIndex, newIndex, NORMAL});
             }
-            if (IsBlackPiece(row, col))
+            else
             {
-                if (IsBlackPiece(newRow, newCol)) break;
-                else if (IsWhitePiece(newRow, newCol))
+                if (blackPieces & newSq) break;
+                else if (whitePieces & newSq)
                 {
-                    moves.push_back({row, col, newRow, newCol, this->board[row][col], CAPTURE});
+                    moves.push_back({currIndex, newIndex, CAPTURE});
                     break;
                 }
-                else
-                {
-                    moves.push_back({row, col, newRow, newCol, this->board[row][col], NORMAL});
-                }
+                else moves.push_back({currIndex, newIndex, NORMAL});
             }
 
             newRow += dirRow;
