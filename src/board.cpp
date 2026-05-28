@@ -61,6 +61,9 @@ void Board::SetupBoard()
             if (!(whitePawn & FILE_H)) whiteAttacks |= whitePawn << 9;
             if (!(blackPawn & FILE_A)) blackAttacks |= blackPawn >> 9;
             if (!(blackPawn & FILE_H)) blackAttacks |= blackPawn >> 7;
+
+            whitePawnAttacks[r][c] = whiteAttacks;
+            blackPawnAttacks[r][c] = blackAttacks;
         }
     }
 
@@ -960,52 +963,27 @@ void Board::GetPawnMoves(int row, int col, std::vector<Move>& moves)
             }
         }
 
-        uint64_t topLeftCaptures = (whitePawns & ~FILE_H) << 7 & blackPieces;
-        while (topLeftCaptures)
+        uint64_t attacks = whitePawnAttacks[row][col] & blackPieces;
+        while (attacks)
         {
-            int toIndex = PopLSB(topLeftCaptures);
-            int fromIndex = toIndex - 7;
-            if (toIndex / 8 == 7)
-            {
-                moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
-                moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
-                moves.push_back({fromIndex, toIndex, PROMOTION, ROOK});
-                moves.push_back({fromIndex, toIndex, PROMOTION, QUEEN});
-            }
-            else
-            {
-                if (epIndex == toIndex)
-                {
-                    moves.push_back({fromIndex, toIndex, ENPASSANT});
-                }
-                else
-                {
-                    moves.push_back({fromIndex, toIndex, CAPTURE});
-                }
-            }
-        }
+            int toIndex = PopLSB(attacks);
 
-        uint64_t topRightCaptures = (whitePawns & ~FILE_A) << 9 & blackPieces;
-        while (topRightCaptures)
-        {
-            int toIndex = PopLSB(topRightCaptures);
-            int fromIndex = toIndex - 9;
             if (toIndex / 8 == 7)
             {
-                moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
-                moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
-                moves.push_back({fromIndex, toIndex, PROMOTION, ROOK});
-                moves.push_back({fromIndex, toIndex, PROMOTION, QUEEN});
+                moves.push_back({currIndex, toIndex, PROMOTION, KNIGHT});
+                moves.push_back({currIndex, toIndex, PROMOTION, BISHOP});
+                moves.push_back({currIndex, toIndex, PROMOTION, ROOK});
+                moves.push_back({currIndex, toIndex, PROMOTION, QUEEN});
             }
             else
             {
                 if (epIndex == toIndex)
                 {
-                    moves.push_back({fromIndex, toIndex, ENPASSANT});
+                    moves.push_back({currIndex, toIndex, ENPASSANT});
                 }
                 else
                 {
-                    moves.push_back({fromIndex, toIndex, CAPTURE});
+                    moves.push_back({currIndex, toIndex, CAPTURE});
                 }
             }
         }
@@ -1035,52 +1013,27 @@ void Board::GetPawnMoves(int row, int col, std::vector<Move>& moves)
             }
         }
 
-        uint64_t bottomLeftCaptures = (blackPawns & ~FILE_H) >> 9 & whitePieces;
-        while (bottomLeftCaptures)
+        uint64_t attacks = blackPawnAttacks[row][col] & whitePieces;
+        while (attacks)
         {
-            int toIndex = PopLSB(bottomLeftCaptures);
-            int fromIndex = toIndex + 9;
-            if (toIndex / 8 == 0)
-            {
-                moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
-                moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
-                moves.push_back({fromIndex, toIndex, PROMOTION, ROOK});
-                moves.push_back({fromIndex, toIndex, PROMOTION, QUEEN});
-            }
-            else
-            {
-                if (epIndex == toIndex)
-                {
-                    moves.push_back({fromIndex, toIndex, ENPASSANT});
-                }
-                else
-                {
-                    moves.push_back({fromIndex, toIndex, CAPTURE});
-                }
-            }
-        }
+            int toIndex = PopLSB(attacks);
 
-        uint64_t bottomRightCaptures = (blackPawns & ~FILE_A) >> 7 & whitePieces;
-        while (bottomRightCaptures)
-        {
-            int toIndex = PopLSB(bottomRightCaptures);
-            int fromIndex = toIndex + 7;
             if (toIndex / 8 == 0)
             {
-                moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
-                moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
-                moves.push_back({fromIndex, toIndex, PROMOTION, ROOK});
-                moves.push_back({fromIndex, toIndex, PROMOTION, QUEEN});
+                moves.push_back({currIndex, toIndex, PROMOTION, KNIGHT});
+                moves.push_back({currIndex, toIndex, PROMOTION, BISHOP});
+                moves.push_back({currIndex, toIndex, PROMOTION, ROOK});
+                moves.push_back({currIndex, toIndex, PROMOTION, QUEEN});
             }
             else
             {
                 if (epIndex == toIndex)
                 {
-                    moves.push_back({fromIndex, toIndex, ENPASSANT});
+                    moves.push_back({currIndex, toIndex, ENPASSANT});
                 }
                 else
                 {
-                    moves.push_back({fromIndex, toIndex, CAPTURE});
+                    moves.push_back({currIndex, toIndex, CAPTURE});
                 }
             }
         }
