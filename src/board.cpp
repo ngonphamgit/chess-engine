@@ -10,7 +10,6 @@
 
 void Board::SetupBoard()
 {
-    /*
     std::string start[8] = 
     {
         "rnbqkbnr",
@@ -30,7 +29,6 @@ void Board::SetupBoard()
             this->board[r][c] = start[r][c];
         }
     }
-    */
 
     this->whitePieces = 0x000000000000FFFFULL;
     this->whitePawns   = 0x000000000000FF00ULL;
@@ -276,6 +274,13 @@ Move Board::ParseMove(std::string input)
     //std::cout << fromRow << " " << fromCol << " " << toRow << " " << toCol << " " << move.pieceMoved << std::endl;
 
     return move;
+}
+
+int PopLSB(uint64_t& bb)
+{
+    int index = __builtin_ctzll(bb);
+    bb &= bb - 1;
+    return index;
 }
 
 bool Board::IsWhitePiece(int row, int col)
@@ -926,152 +931,157 @@ void Board::UpdateControlMaps(int fromRow, int fromCol, int toRow, int toCol)
 
 void Board::GetPawnMoves(int row, int col, std::vector<Move>& moves)
 {
-    if (IsWhitePiece(row, col))
+    int currIndex = row * 8 + col;
+    uint64_t sq = 1ULL << currIndex;
+    int epIndex = enPassantRow * 8 + enPassantCol;
+
+    if (whitePieces & sq)
     {
-        //move one space up
-        if (row - 1 >= 0 && IsEmptySquare(row - 1, col))
+        uint64_t singlePushes = (whitePawns << 8) & ~occupiedSquares;
+        while (singlePushes)
         {
-            //promotion
-            if (row - 1 == 0)
+            int toIndex = PopLSB(singlePushes);
+            int fromIndex = toIndex - 8;
+            if (toIndex / 8 == 7)
             {
-                moves.push_back({row, col, row - 1, col, this->board[row][col], PROMOTION, KNIGHT});
-                moves.push_back({row, col, row - 1, col, this->board[row][col], PROMOTION, BISHOP});
-                moves.push_back({row, col, row - 1, col, this->board[row][col], PROMOTION, ROOK});
-                moves.push_back({row, col, row - 1, col, this->board[row][col], PROMOTION, QUEEN});
+                moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
+                moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
+                moves.push_back({fromIndex, toIndex, PROMOTION, ROOK});
+                moves.push_back({fromIndex, toIndex, PROMOTION, QUEEN});
             }
-            //normal push
             else
             {
-                moves.push_back({row, col, row - 1, col, this->board[row][col], NORMAL});
+                moves.push_back({fromIndex, toIndex, NORMAL});
 
-                //double push on first move
-                if (row == 6 && IsEmptySquare(row - 2, col))
+                if (fromIndex / 8 == 1 && !(occupiedSquares & (1ULL << (toIndex + 8))))
                 {
-                    moves.push_back({row, col, row - 2, col, this->board[row][col], PAWNDOUBLE});
+                    moves.push_back({fromIndex, toIndex + 8, PAWNDOUBLE});
                 }
             }
         }
 
-        int newRow = row - 1;
-        //top left capture
-        if (col - 1 >= 0)
+        uint64_t topLeftCaptures = (whitePawns & ~FILE_H) << 7 & blackPieces;
+        while (topLeftCaptures)
         {
-            if (newRow >= 0 && IsBlackPiece(row - 1, col - 1))
+            int toIndex = PopLSB(topLeftCaptures);
+            int fromIndex = toIndex - 7;
+            if (toIndex / 8 == 7)
             {
-                //capture into promotion
-                if (newRow == 0)
+                moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
+                moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
+                moves.push_back({fromIndex, toIndex, PROMOTION, ROOK});
+                moves.push_back({fromIndex, toIndex, PROMOTION, QUEEN});
+            }
+            else
+            {
+                if (epIndex == toIndex)
                 {
-                    moves.push_back({row, col, row - 1, col - 1, this->board[row][col], PROMOTION, KNIGHT});
-                    moves.push_back({row, col, row - 1, col - 1, this->board[row][col], PROMOTION, BISHOP});
-                    moves.push_back({row, col, row - 1, col - 1, this->board[row][col], PROMOTION, ROOK});
-                    moves.push_back({row, col, row - 1, col - 1, this->board[row][col], PROMOTION, QUEEN});
+                    moves.push_back({fromIndex, toIndex, ENPASSANT});
                 }
-                //normal capture
                 else
                 {
-                    moves.push_back({row, col, row - 1, col - 1, this->board[row][col], CAPTURE});
+                    moves.push_back({fromIndex, toIndex, CAPTURE});
                 }
-            }
-            //en passant
-            if (newRow >= 0 && this->enPassantRow == newRow && this->enPassantCol == col - 1)
-            {
-                moves.push_back({row, col, row - 1, col - 1, this->board[row][col], ENPASSANT});
             }
         }
 
-        //top right capture
-        if (col + 1 < 8)
+        uint64_t topRightCaptures = (whitePawns & ~FILE_A) << 9 & blackPieces;
+        while (topRightCaptures)
         {
-            if (newRow >= 0 && IsBlackPiece(row - 1, col + 1))
+            int toIndex = PopLSB(topRightCaptures);
+            int fromIndex = toIndex - 9;
+            if (toIndex / 8 == 7)
             {
-                if (newRow == 0)
+                moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
+                moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
+                moves.push_back({fromIndex, toIndex, PROMOTION, ROOK});
+                moves.push_back({fromIndex, toIndex, PROMOTION, QUEEN});
+            }
+            else
+            {
+                if (epIndex == toIndex)
                 {
-                    moves.push_back({row, col, row - 1, col + 1, this->board[row][col], PROMOTION, KNIGHT});
-                    moves.push_back({row, col, row - 1, col + 1, this->board[row][col], PROMOTION, BISHOP});
-                    moves.push_back({row, col, row - 1, col + 1, this->board[row][col], PROMOTION, ROOK});
-                    moves.push_back({row, col, row - 1, col + 1, this->board[row][col], PROMOTION, QUEEN});
+                    moves.push_back({fromIndex, toIndex, ENPASSANT});
                 }
                 else
                 {
-                    moves.push_back({row, col, row - 1, col + 1, this->board[row][col], CAPTURE});
+                    moves.push_back({fromIndex, toIndex, CAPTURE});
                 }
-            }
-            if (newRow >= 0 && this->enPassantRow == newRow && this->enPassantCol == col + 1)
-            {
-                moves.push_back({row, col, row - 1, col + 1, this->board[row][col], ENPASSANT});
             }
         }
     }
-    else
+    else //black
     {
-        //move one space down
-        if (row + 1 < 8 && IsEmptySquare(row + 1, col))
+        uint64_t singlePushes = (blackPawns >> 8) & ~occupiedSquares;
+        while (singlePushes)
         {
-            if (row + 1 == 7)
+            int toIndex = PopLSB(singlePushes);
+            int fromIndex = toIndex + 8;
+            if (toIndex / 8 == 0)
             {
-                moves.push_back({row, col, row + 1, col, this->board[row][col], PROMOTION, KNIGHT});
-                moves.push_back({row, col, row + 1, col, this->board[row][col], PROMOTION, BISHOP});
-                moves.push_back({row, col, row + 1, col, this->board[row][col], PROMOTION, ROOK});
-                moves.push_back({row, col, row + 1, col, this->board[row][col], PROMOTION, QUEEN});
+                moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
+                moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
+                moves.push_back({fromIndex, toIndex, PROMOTION, ROOK});
+                moves.push_back({fromIndex, toIndex, PROMOTION, QUEEN});
             }
             else
             {
-                moves.push_back({row, col, row + 1, col, this->board[row][col], NORMAL});
+                moves.push_back({fromIndex, toIndex, NORMAL});
 
-                //move two spaces down on first move
-                if (row == 1 && IsEmptySquare(row + 2, col))
+                if (fromIndex / 8 == 6 && !(occupiedSquares & (1ULL << (toIndex - 8))))
                 {
-                    moves.push_back({row, col, row + 2, col, this->board[row][col], PAWNDOUBLE});
+                    moves.push_back({fromIndex, toIndex - 8, PAWNDOUBLE});
                 }
             }
         }
 
-        int newRow = row + 1;
-        //bottom left capture
-        if (col - 1 >= 0)
+        uint64_t bottomLeftCaptures = (blackPawns & ~FILE_H) >> 9 & whitePieces;
+        while (bottomLeftCaptures)
         {
-            if (newRow < 8 && IsWhitePiece(row + 1, col - 1))
+            int toIndex = PopLSB(bottomLeftCaptures);
+            int fromIndex = toIndex + 9;
+            if (toIndex / 8 == 0)
             {
-                if (newRow == 7)
+                moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
+                moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
+                moves.push_back({fromIndex, toIndex, PROMOTION, ROOK});
+                moves.push_back({fromIndex, toIndex, PROMOTION, QUEEN});
+            }
+            else
+            {
+                if (epIndex == toIndex)
                 {
-                    moves.push_back({row, col, row + 1, col - 1, this->board[row][col], PROMOTION, KNIGHT});
-                    moves.push_back({row, col, row + 1, col - 1, this->board[row][col], PROMOTION, BISHOP});
-                    moves.push_back({row, col, row + 1, col - 1, this->board[row][col], PROMOTION, ROOK});
-                    moves.push_back({row, col, row + 1, col - 1, this->board[row][col], PROMOTION, QUEEN});
+                    moves.push_back({fromIndex, toIndex, ENPASSANT});
                 }
                 else
                 {
-                    moves.push_back({row, col, row + 1, col - 1, this->board[row][col], CAPTURE});
+                    moves.push_back({fromIndex, toIndex, CAPTURE});
                 }
-            }
-
-            if (newRow < 8 && this->enPassantRow == newRow && this->enPassantCol == col - 1)
-            {
-                moves.push_back({row, col, row + 1, col - 1, this->board[row][col], ENPASSANT});
             }
         }
 
-        //bottom right capture
-        if (col + 1 < 8)
+        uint64_t bottomRightCaptures = (blackPawns & ~FILE_A) >> 7 & whitePieces;
+        while (bottomRightCaptures)
         {
-            if (newRow < 8 && IsWhitePiece(row + 1, col + 1))
+            int toIndex = PopLSB(bottomRightCaptures);
+            int fromIndex = toIndex + 7;
+            if (toIndex / 8 == 0)
             {
-                if (newRow == 7)
+                moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
+                moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
+                moves.push_back({fromIndex, toIndex, PROMOTION, ROOK});
+                moves.push_back({fromIndex, toIndex, PROMOTION, QUEEN});
+            }
+            else
+            {
+                if (epIndex == toIndex)
                 {
-                    moves.push_back({row, col, row + 1, col + 1, this->board[row][col], PROMOTION, KNIGHT});
-                    moves.push_back({row, col, row + 1, col + 1, this->board[row][col], PROMOTION, BISHOP});
-                    moves.push_back({row, col, row + 1, col + 1, this->board[row][col], PROMOTION, ROOK});
-                    moves.push_back({row, col, row + 1, col + 1, this->board[row][col], PROMOTION, QUEEN});
+                    moves.push_back({fromIndex, toIndex, ENPASSANT});
                 }
                 else
                 {
-                    moves.push_back({row, col, row + 1, col + 1, this->board[row][col], CAPTURE});
+                    moves.push_back({fromIndex, toIndex, CAPTURE});
                 }
-            }
-
-            if (newRow < 8 && this->enPassantRow == newRow && this->enPassantCol == col + 1)
-            {
-                moves.push_back({row, col, row + 1, col + 1, this->board[row][col], ENPASSANT});
             }
         }
     }

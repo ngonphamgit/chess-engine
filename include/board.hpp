@@ -98,6 +98,7 @@ class Board
     std::string SquareToString(int row, int col);
     Move ParseMove(std::string input);
 
+    int PopLSB(uint64_t& bb);
     bool IsWhitePiece(int row, int col);
     bool IsBlackPiece(int row, int col);
     bool IsEmptySquare(int row, int col);

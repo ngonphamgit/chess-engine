@@ -21,12 +21,17 @@ enum MoveType
 
 struct Move
 {
+    /*
     int fromRow;
     int fromCol;
     int toRow;
     int toCol;
+    */
 
-    char pieceMoved;
+    int fromIndex;
+    int toIndex;
+
+    //char pieceMoved;
     MoveType moveType;
     PromoteType promoteType;
 
@@ -34,10 +39,8 @@ struct Move
 
     bool operator==(const Move& other) const
     {
-        return fromRow == other.fromRow &&
-               fromCol == other.fromCol &&
-               toRow == other.toRow &&
-               toCol == other.toCol &&
+        return fromIndex == other.fromIndex &&
+               toIndex == other.toIndex &&
                moveType == other.moveType &&
                promoteType == other.promoteType;
     }
