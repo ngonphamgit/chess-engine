@@ -1089,35 +1089,48 @@ void Board::GetPawnMoves(int row, int col, std::vector<Move>& moves)
 
 void Board::GetKnightMoves(int row, int col, std::vector<Move>& moves)
 {
-    int offsets[8][2]
-    {
-        {-2, -1},
-        {-2,  1},
-        {-1, -2},
-        {-1,  2},
-        { 1, -2},
-        { 1,  2},
-        { 2, -1},
-        { 2,  1}
-    };
+    uint64_t attacks = knightAttacks[row][col];
+    int currIndex = row * 8 + col;
+    uint64_t sq = 1ULL << currIndex;
 
-    for (int i = 0; i < 8; i++)
+    if (whitePieces & sq)
     {
-        int newRow = row + offsets[i][0];
-        int newCol = col + offsets[i][1];
-        
-        if (newRow < 0 || newRow >= 8) continue;
-        if (newCol < 0 || newCol >= 8) continue;
-
-        if (IsWhitePiece(row, col) && !IsWhitePiece(newRow, newCol))
+        while (attacks)
         {
-            if (IsBlackPiece(newRow, newCol)) moves.push_back({row, col, newRow, newCol, this->board[row][col], CAPTURE});
-            else moves.push_back({row, col, newRow, newCol, this->board[row][col], NORMAL});
+            int toIndex = PopLSB(attacks);
+            uint64_t toSq = 1ULL << toIndex;
+            
+            if (!(whitePieces & toSq))
+            {
+                if (blackPieces & toSq)
+                {
+                    moves.push_back({currIndex, toIndex, CAPTURE});
+                }
+                else
+                {
+                    moves.push_back({currIndex, toIndex, NORMAL});
+                }
+            }
         }
-        else if (IsBlackPiece(row, col) && !IsBlackPiece(newRow, newCol))
+    }
+    else
+    {
+        while (attacks)
         {
-            if (IsWhitePiece(newRow, newCol)) moves.push_back({row, col, newRow, newCol, this->board[row][col], CAPTURE});
-            else moves.push_back({row, col, newRow, newCol, this->board[row][col], NORMAL});
+            int toIndex = PopLSB(attacks);
+            uint64_t toSq = 1ULL << toIndex;
+            
+            if (!(blackPieces & toSq))
+            {
+                if (whitePieces & toSq)
+                {
+                    moves.push_back({currIndex, toIndex, CAPTURE});
+                }
+                else
+                {
+                    moves.push_back({currIndex, toIndex, NORMAL});
+                }
+            }
         }
     }
 }

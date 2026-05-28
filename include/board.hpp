@@ -73,7 +73,7 @@ class Board
     uint64_t knightAttacks[8][8];
     uint64_t kingAttacks[8][8];
 
-    int rookRays[8][2] = {
+    int rookRays[4][2] = {
         {1, 0},
         {0, 1},
         {-1, 0},
