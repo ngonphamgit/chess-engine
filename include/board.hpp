@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <unordered_map>
+#include <functional>
 
 class Board
 {
@@ -91,12 +93,32 @@ class Board
     int enPassantRow;
     int enPassantCol;
 
+    std::unordered_map<char, uint64_t*> pieceBoards = {
+        {'P', &whitePawns},
+        {'N', &whiteKnights},
+        {'B', &whiteBishops},
+        {'R', &whiteRooks},
+        {'Q', &whiteQueens},
+        {'K', &whiteKing},
+
+        {'p', &blackPawns},
+        {'n', &blackKnights},
+        {'b', &blackBishops},
+        {'r', &blackRooks},
+        {'q', &blackQueens},
+        {'k', &blackKing},
+    };
+
     void SetupBoard();
     void PrintBoard();
 
-    int PieceIndex(char piece); //used for zobrist hashing
+    int PieceZobristIndex(char piece); //used for zobrist hashing
+    char GetPieceAtIndex(int index); //get piece from bitboard at target index
     std::string SquareToString(int row, int col);
     Move ParseMove(std::string input);
+
+    void RemovePieceAtIndex(char piece, int index);
+    void AddPieceAtIndex(char piece, int index);
 
     int PopLSB(uint64_t& bb);
     bool IsSquareAttacked(int row, int col, char color);
