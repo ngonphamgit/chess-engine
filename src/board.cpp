@@ -286,48 +286,6 @@ int PopLSB(uint64_t& bb)
     return index;
 }
 
-bool Board::IsWhitePiece(int row, int col)
-{
-    /*
-    char piece = this->board[row][col];
-
-    if (std::isupper(piece)) return true;
-    return false;
-    */
-
-    int index = row * 8 + col;
-    if (whitePieces & (1ULL << index)) return true;
-    return false;
-}
-
-bool Board::IsBlackPiece(int row, int col)
-{
-    /*
-    char piece = this->board[row][col];
-
-    if (std::islower(piece)) return true;
-    return false;
-    */
-    
-    int index = row * 8 + col;
-    if (blackPieces & (1ULL << index)) return true;
-    return false;
-}
-
-bool Board::IsEmptySquare(int row, int col)
-{
-    /*
-    char piece = this->board[row][col];
-
-    if (piece == '.') return true;
-    return false;
-    */
-
-    int index = row * 8 + col;
-    if (!(occupiedSquares & (1ULL))) return true;
-    return false;
-}
-
 bool Board::IsSquareAttacked(int row, int col, char attackerColor) 
 {
     int index = row * 8 + col; //square to check
@@ -438,9 +396,10 @@ bool Board::IsKingChecked(char color)
     return IsSquareAttacked(kingRow, kingCol, enemyColor);
 }
 
-void Board::GetPawnMoves(int row, int col, std::vector<Move>& moves)
+void Board::GetPawnMoves(int currIndex, std::vector<Move>& moves)
 {
-    int currIndex = row * 8 + col;
+    int row = currIndex / 8;
+    int col = currIndex % 8;
     uint64_t sq = 1ULL << currIndex;
     int epIndex = enPassantRow * 8 + enPassantCol;
 
@@ -546,10 +505,11 @@ void Board::GetPawnMoves(int row, int col, std::vector<Move>& moves)
     }
 }
 
-void Board::GetKnightMoves(int row, int col, std::vector<Move>& moves)
+void Board::GetKnightMoves(int currIndex, std::vector<Move>& moves)
 {
     uint64_t attacks = knightAttacks[row][col];
-    int currIndex = row * 8 + col;
+    int row = currIndex / 8;
+    int col = currIndex % 8;
 
     if (this->color == 'w')
     {
@@ -593,9 +553,10 @@ void Board::GetKnightMoves(int row, int col, std::vector<Move>& moves)
     }
 }
 
-void Board::GetBishopMoves(int row, int col, std::vector<Move>& moves)
+void Board::GetBishopMoves(int currIndex, std::vector<Move>& moves)
 {
-    int currIndex = row * 8 + col;
+    int row = currIndex / 8;
+    int col = currIndex % 8;
 
     for (int i = 0; i < 4; i++)
     {
@@ -639,9 +600,10 @@ void Board::GetBishopMoves(int row, int col, std::vector<Move>& moves)
     }
 }
 
-void Board::GetRookMoves(int row, int col, std::vector<Move>& moves)
+void Board::GetRookMoves(int currIndex, std::vector<Move>& moves)
 {
-    int currIndex = row * 8 + col;
+    int row = currIndex / 8;
+    int col = currIndex % 8;
 
     for (int i = 0; i < 4; i++)
     {
@@ -691,10 +653,11 @@ void Board::GetQueenMoves(int row, int col, std::vector<Move>& moves)
     this->GetRookMoves(row, col, moves);
 }
 
-void Board::GetKingMoves(int row, int col, std::vector<Move>& moves)
+void Board::GetKingMoves(int currIndex, std::vector<Move>& moves)
 {
     uint64_t attacks = kingAttacks[row][col];
-    int currIndex = row * 8 + col;
+    int row = currIndex / 8;
+    int col = currIndex % 8;
 
     while (attacks)
     {
@@ -766,58 +729,25 @@ void Board::GetKingMoves(int row, int col, std::vector<Move>& moves)
 
 void Board::GetLegalMoves(std::vector<Move>& moves)
 {
-    moves.clear();
+    uint64_t pawns   = (color == 'w') ? whitePawns : blackPawns;
+    uint64_t knights = (color == 'w') ? whiteKnights : blackKnights;
+    uint64_t bishops = (color == 'w') ? whiteBishops : blackBishops;
+    uint64_t rooks   = (color == 'w') ? whiteRooks : blackRooks;
+    uint64_t queens  = (color == 'w') ? whiteQueens : blackQueens;
+    uint64_t king    = (color == 'w') ? whiteKing : blackKing;
 
-    for (int r = 0; r < 8; r++)
+    uint64_t pieces = pawns | knights | bishops | rooks | queens | king;
+    while (pieces)
     {
-        for (int c = 0; c < 8; c++)
-        {
-            char piece = this->board[r][c];
+        int index = PopLSB(pieces);
+        uint64_t sq = 1ULL << index;
 
-            if (piece == '.') continue;
-            if (this->color == 'w' && !IsWhitePiece(r, c)) continue;
-            if (this->color == 'b' && !IsBlackPiece(r, c)) continue;
-
-            switch (piece)
-            {
-                case 'P':
-                case 'p':
-                {
-                    GetPawnMoves(r, c, moves);
-                    break;
-                }
-                case 'N':
-                case 'n':
-                {  
-                    GetKnightMoves(r, c, moves);
-                    break;
-                }
-                case 'B':
-                case 'b':
-                {
-                    GetBishopMoves(r, c, moves);
-                    break;
-                }
-                case 'R':
-                case 'r':
-                {
-                    GetRookMoves(r, c, moves);
-                    break;
-                }
-                case 'Q':
-                case 'q':
-                {
-                    GetQueenMoves(r, c, moves);
-                    break;
-                }
-                case 'K':
-                case 'k':
-                {
-                    GetKingMoves(r, c, moves);
-                    break;
-                }
-            }
-        }
+        if (pawns & sq) GetPawnMoves(index, moves);
+        else if (knights & sq) GetKnightMoves(index, moves);
+        else if (bishops & sq) GetBishopMoves(index, moves);
+        else if (rooks & sq) GetRookMoves(index, moves);
+        else if (queens & sq) GetQueenMoves(index, moves);
+        else if (king & sq) GetKingMoves(index, moves);
     }
 }
 

@@ -99,18 +99,15 @@ class Board
     Move ParseMove(std::string input);
 
     int PopLSB(uint64_t& bb);
-    bool IsWhitePiece(int row, int col);
-    bool IsBlackPiece(int row, int col);
-    bool IsEmptySquare(int row, int col);
     bool IsSquareAttacked(int row, int col, char color);
     bool IsKingChecked(char color);
 
-    void GetPawnMoves(int row, int col, std::vector<Move>& moves);
-    void GetKnightMoves(int row, int col, std::vector<Move>& moves);
-    void GetBishopMoves(int row, int col, std::vector<Move>& moves);
-    void GetRookMoves(int row, int col, std::vector<Move>& moves);
-    void GetQueenMoves(int row, int col, std::vector<Move>& moves);
-    void GetKingMoves(int row, int col, std::vector<Move>& moves);
+    void GetPawnMoves(int index, std::vector<Move>& moves);
+    void GetKnightMoves(int index, std::vector<Move>& moves);
+    void GetBishopMoves(int index, std::vector<Move>& moves);
+    void GetRookMoves(int index, std::vector<Move>& moves);
+    void GetQueenMoves(int index, std::vector<Move>& moves);
+    void GetKingMoves(int index, std::vector<Move>& moves);
     void GetLegalMoves(std::vector<Move>& moves);
 
     void SwitchColors();
