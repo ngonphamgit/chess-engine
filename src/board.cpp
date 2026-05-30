@@ -894,19 +894,18 @@ UndoMove Board::MakeMove(const Move& move)
     //apply normal moves
     if (move.moveType != CASTLEKING && move.moveType != CASTLEQUEEN)
     {
-        
-        this->board[move.fromRow][move.fromCol] = '.';
-        this->board[move.toRow][move.toCol] = fromPiece;
+        RemovePieceAtIndex(fromPiece, move.fromIndex);
+        AddPieceAtIndex(fromPiece, move.toIndex);
 
         if (fromPiece == 'K')
         {
-            this->whiteKingRow = move.toRow;
-            this->whiteKingCol = move.toCol;
+            this->whiteKingRow = toRow;
+            this->whiteKingCol = toCol;
         }
         else if (fromPiece == 'k')
         {
-            this->blackKingRow = move.toRow;
-            this->blackKingCol = move.toCol;
+            this->blackKingRow = toRow;
+            this->blackKingCol = toCol;
         }
 
         this->enPassantRow = -1;
@@ -917,14 +916,14 @@ UndoMove Board::MakeMove(const Move& move)
             if (fromPiece == 'P')
             {
                 int pawnIndex = PieceZobristIndex('p');
-                this->board[move.toRow + 1][move.toCol] = '.';
-                hash ^= Engine::pieceSquareVals[move.toRow + 1][move.toCol][pawnIndex];
+                RemovePieceAtIndex('p', move.toIndex - 8);
+                hash ^= Engine::pieceSquareVals[toRow + 1][toCol][pawnIndex];
             }
             else if (fromPiece == 'p')
             {
                 int pawnIndex = PieceZobristIndex('P');
-                this->board[move.toRow - 1][move.toCol] = '.';
-                hash ^= Engine::pieceSquareVals[move.toRow - 1][move.toCol][pawnIndex];
+                RemovePieceAtIndex('P', move.toIndex + 8);
+                hash ^= Engine::pieceSquareVals[toRow - 1][toCol][pawnIndex];
             }
         }
         else if (move.moveType == PAWNDOUBLE)
@@ -934,13 +933,13 @@ UndoMove Board::MakeMove(const Move& move)
 
             if (fromPiece == 'P')
             {
-                this->enPassantRow = move.toRow + 1;
-                this->enPassantCol = move.toCol;
+                this->enPassantRow = toRow + 1;
+                this->enPassantCol = toCol;
             }
             else if (fromPiece == 'p')
             {
-                this->enPassantRow = move.toRow - 1;
-                this->enPassantCol = move.toCol;
+                this->enPassantRow = toRow - 1;
+                this->enPassantCol = toCol;
             }
         }
         else if (move.moveType == PROMOTION)
@@ -951,11 +950,13 @@ UndoMove Board::MakeMove(const Move& move)
                 {
                     if (fromPiece == 'P')
                     {
-                        this->board[move.toRow][move.toCol] = 'N';
+                        RemovePieceAtIndex('P', move.toIndex);
+                        AddPieceAtIndex('N', move.toIndex);
                     }
                     else
                     {
-                        this->board[move.toRow][move.toCol] = 'n';
+                        RemovePieceAtIndex('p', move.toIndex);
+                        AddPieceAtIndex('n', move.toIndex);
                     }
                     break;
                 }
@@ -963,11 +964,13 @@ UndoMove Board::MakeMove(const Move& move)
                 {
                     if (fromPiece == 'P')
                     {
-                        this->board[move.toRow][move.toCol] = 'B';
+                        RemovePieceAtIndex('P', move.toIndex);
+                        AddPieceAtIndex('B', move.toIndex);
                     }
                     else
                     {
-                        this->board[move.toRow][move.toCol] = 'b';
+                        RemovePieceAtIndex('p', move.toIndex);
+                        AddPieceAtIndex('b', move.toIndex);
                     }
                     break;
                 }
@@ -975,11 +978,13 @@ UndoMove Board::MakeMove(const Move& move)
                 {
                     if (fromPiece == 'P')
                     {
-                        this->board[move.toRow][move.toCol] = 'R';
+                        RemovePieceAtIndex('P', move.toIndex);
+                        AddPieceAtIndex('R', move.toIndex);
                     }
                     else
                     {
-                        this->board[move.toRow][move.toCol] = 'r';
+                        RemovePieceAtIndex('p', move.toIndex);
+                        AddPieceAtIndex('r', move.toIndex);
                     }
                     break;
                 }
@@ -987,11 +992,13 @@ UndoMove Board::MakeMove(const Move& move)
                 {
                     if (fromPiece == 'P')
                     {
-                        this->board[move.toRow][move.toCol] = 'Q';
+                        RemovePieceAtIndex('P', move.toIndex);
+                        AddPieceAtIndex('Q', move.toIndex);
                     }
                     else
                     {
-                        this->board[move.toRow][move.toCol] = 'q';
+                        RemovePieceAtIndex('p', move.toIndex);
+                        AddPieceAtIndex('q', move.toIndex);
                     }
                     break;
                 }
@@ -1006,32 +1013,32 @@ UndoMove Board::MakeMove(const Move& move)
 
         if (fromPiece == 'K')
         {
-            board[7][4] = '.';
-            board[7][6] = 'K';
+            RemovePieceAtIndex('K', 4);
+            AddPieceAtIndex('K', 6);
 
-            board[7][7] = '.';
-            board[7][5] = 'R';
+            RemovePieceAtIndex('R', 7);
+            AddPieceAtIndex('R', 5);
 
             int rookIndex = PieceZobristIndex('R');
             this->hash ^= Engine::pieceSquareVals[7][7][rookIndex];
             this->hash ^= Engine::pieceSquareVals[7][5][rookIndex];
 
-            this->whiteKingRow = 7;
+            this->whiteKingRow = 0;
             this->whiteKingCol = 6;
         }
         else
         {
-            board[0][4] = '.';
-            board[0][6] = 'k';
+            RemovePieceAtIndex('k', 60);
+            AddPieceAtIndex('k', 62);
 
-            board[0][7] = '.';
-            board[0][5] = 'r';
+            RemovePieceAtIndex('r', 63);
+            AddPieceAtIndex('r', 61);
 
             int rookIndex = PieceZobristIndex('r');
             this->hash ^= Engine::pieceSquareVals[0][7][rookIndex];
             this->hash ^= Engine::pieceSquareVals[0][5][rookIndex];
 
-            this->blackKingRow = 0;
+            this->blackKingRow = 7;
             this->blackKingCol = 6;
         }
     }
@@ -1042,32 +1049,32 @@ UndoMove Board::MakeMove(const Move& move)
 
         if (fromPiece == 'K')
         {
-            board[7][4] = '.';
-            board[7][2] = 'K';
+            RemovePieceAtIndex('K', 4);
+            AddPieceAtIndex('K', 2);
 
-            board[7][0] = '.';
-            board[7][3] = 'R';
+            RemovePieceAtIndex('R', 0);
+            AddPieceAtIndex('R', 3);
 
             int rookIndex = PieceZobristIndex('R');
             this->hash ^= Engine::pieceSquareVals[7][0][rookIndex];
             this->hash ^= Engine::pieceSquareVals[7][3][rookIndex];
 
-            this->whiteKingRow = 7;
+            this->whiteKingRow = 0;
             this->whiteKingCol = 2;
         }
         else
         {
-            board[0][4] = '.';
-            board[0][2] = 'k';
+            RemovePieceAtIndex('k', 60);
+            AddPieceAtIndex('k', 58);
 
-            board[0][0] = '.';
-            board[0][3] = 'r';
+            RemovePieceAtIndex('r', 56);
+            AddPieceAtIndex('r', 59);
 
             int rookIndex = PieceZobristIndex('r');
             this->hash ^= Engine::pieceSquareVals[0][0][rookIndex];
             this->hash ^= Engine::pieceSquareVals[0][3][rookIndex];
 
-            this->blackKingRow = 0;
+            this->blackKingRow = 7;
             this->blackKingCol = 2;
         }
     }
@@ -1097,8 +1104,13 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
     char fromPiece = undo.pieceMoved;
     char toPiece = undo.pieceCaptured;
 
-    int fromIndex = PieceZobristIndex(fromPiece);
-    int toIndex = PieceZobristIndex(toPiece);
+    int fromPieceIndex = PieceZobristIndex(fromPiece);
+    int toPieceIndex = PieceZobristIndex(toPiece);
+
+    int fromRow = move.fromIndex / 8;
+    int fromCol = move.fromIndex % 8;
+    int toRow = move.toIndex / 8;
+    int toCol = move.toIndex % 8;
 
     int newCastleIndex =
     (whiteKingSide  ? 1 : 0) |
@@ -1122,11 +1134,11 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
     this->enPassantRow = undo.enPassantRow;
     this->enPassantCol = undo.enPassantCol;
 
-    this->hash ^= Engine::pieceSquareVals[move.fromRow][move.fromCol][fromIndex];
-    this->hash ^= Engine::pieceSquareVals[move.toRow][move.toCol][fromIndex];
+    this->hash ^= Engine::pieceSquareVals[fromRow][fromCol][fromPieceIndex];
+    this->hash ^= Engine::pieceSquareVals[toRow][toCol][fromPieceIndex];
     if (toPiece != '.')
     {
-        this->hash ^= Engine::pieceSquareVals[move.toRow][move.toCol][toIndex];
+        this->hash ^= Engine::pieceSquareVals[toRow][toCol][toPieceIndex];
     }
     this->hash ^= Engine::sideKey;
 
@@ -1142,26 +1154,82 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
     (undo.blackQueenSide ? 8 : 0);
     this->hash ^= Engine::castlingKey[oldCastleIndex];
 
-    if (move.moveType == CASTLEKING)
+    if (move.moveType == NORMAL)
+    {
+        RemovePieceAtIndex(fromPiece, move.toIndex);
+        AddPieceAtIndex(fromPiece, move.fromIndex);
+
+        if (fromPiece == 'K')
+        {
+            this->whiteKingRow = move.fromIndex / 8;
+            this->whiteKingCol = move.fromIndex % 8;
+        }
+        else if (fromPiece == 'k')
+        {
+            this->blackKingRow = move.fromIndex / 8;
+            this->blackKingCol = move.fromIndex % 8;
+        }
+    }
+    else if (move.moveType == CAPTURE)
+    {
+        RemovePieceAtIndex(fromPiece, move.toIndex);
+        AddPieceAtIndex(fromPiece, move.fromIndex);
+        AddPieceAtIndex(toPiece, move.toIndex);
+
+        if (fromPiece == 'K')
+        {
+            this->whiteKingRow = move.fromIndex / 8;
+            this->whiteKingCol = move.fromIndex % 8;
+        }
+        else if (fromPiece == 'k')
+        {
+            this->blackKingRow = move.fromIndex / 8;
+            this->blackKingCol = move.fromIndex % 8;
+        }
+    }
+    else if (move.moveType == ENPASSANT)
+    {
+        RemovePieceAtIndex(fromPiece, move.toIndex);
+        AddPieceAtIndex(fromPiece, move.fromIndex);
+
+        if (fromPiece == 'P')
+        {
+            AddPieceAtIndex('p', move.toIndex - 8); 
+        }
+        else if (fromPiece == 'p')
+        {
+            AddPieceAtIndex('P', move.toIndex + 8);
+        }
+    }
+    else if (move.moveType == PROMOTION)
+    {
+        char promotedPiece = GetPieceAtIndex(move.toIndex);
+
+        RemovePieceAtIndex(promotedPiece, move.toIndex);
+        if (toPiece != '.') AddPieceAtIndex(toPiece, move.toIndex);
+
+        AddPieceAtIndex(fromPiece, move.fromIndex);
+    }
+    else if (move.moveType == CASTLEKING)
     {
         if (fromPiece == 'K')
         {
-            board[7][6] = '.';
-            board[7][4] = 'K';
+            RemovePieceAtIndex('K', 6);
+            AddPieceAtIndex('K', 4);
 
-            board[7][5] = '.';
-            board[7][7] = 'R';
+            RemovePieceAtIndex('R', 5);
+            AddPieceAtIndex('R', 7);
 
-            this->whiteKingRow = 7;
+            this->whiteKingRow = 0;
             this->whiteKingCol = 4;
         }
         else
         {
-            board[0][6] = '.';
-            board[0][4] = 'k';
+            RemovePieceAtIndex('k', 62);
+            AddPieceAtIndex('k', 60);
 
-            board[0][5] = '.';
-            board[0][7] = 'r';
+            RemovePieceAtIndex('r', 61);
+            AddPieceAtIndex('r', 63);
 
             this->blackKingRow = 0;
             this->blackKingCol = 4;
@@ -1171,55 +1239,26 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
     {
         if (fromPiece == 'K')
         {
-            board[7][2] = '.';
-            board[7][4] = 'K';
+            RemovePieceAtIndex('K', 2);
+            AddPieceAtIndex('K', 4);
 
-            board[7][3] = '.';
-            board[7][0] = 'R';
+            RemovePieceAtIndex('R', 3);
+            AddPieceAtIndex('R', 0);
 
             this->whiteKingRow = 7;
             this->whiteKingCol = 4;
         }
         else
         {
-            board[0][2] = '.';
-            board[0][4] = 'k';
+            RemovePieceAtIndex('k', 58);
+            AddPieceAtIndex('k', 60);
 
-            board[0][3] = '.';
-            board[0][0] = 'r';
+            RemovePieceAtIndex('r', 59);
+            AddPieceAtIndex('r', 56);
             
-            this->blackKingRow = 0;
+            this->blackKingRow = 7;
             this->blackKingCol = 4;
         }
     }
-    else
-    {
-        this->board[move.toRow][move.toCol] = toPiece;
-        this->board[move.fromRow][move.fromCol] = fromPiece;
-
-        if (fromPiece == 'K')
-        {
-            this->whiteKingRow = move.fromRow;
-            this->whiteKingCol = move.fromCol;
-        }
-        else if (fromPiece == 'k')
-        {
-            this->blackKingRow = move.fromRow;
-            this->blackKingCol = move.fromCol;
-        }
-
-        if (move.moveType == ENPASSANT)
-        {
-            if (fromPiece == 'P')
-            {
-                this->board[move.toRow + 1][move.toCol] = 'p';
-            }
-            else if (fromPiece == 'p')
-            {
-                this->board[move.toRow - 1][move.toCol] = 'P';
-            }
-        }
-    }
-
     //std::cout << "End Unmake Hash: " << this->hash << std::endl;
 }
