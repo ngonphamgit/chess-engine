@@ -9,6 +9,6 @@ class Eval
     int mobilityValue[256] = {};
 
     Eval();
-    int GetPieceMobility(Board& board, int r, int c);
+    int GetPieceMobility(Board& board, int index);
     int GetEvalScore(Board& board);
 };

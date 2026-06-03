@@ -48,8 +48,8 @@ void PerftTest(Board& board, int depth)
         totalNodes += nodes;
         board.UnmakeMove(move, undo);
 
-        std::cout << board.SquareToString(move.fromRow, move.fromCol) << " " 
-                  << board.SquareToString(move.toRow, move.toCol) << ": "
+        std::cout << board.SquareToString(move.fromIndex / 8, move.fromIndex % 8) << " " 
+                  << board.SquareToString(move.toIndex / 8, move.toIndex % 8) << ": "
                   << nodes << std::endl;
     }
 

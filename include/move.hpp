@@ -52,8 +52,7 @@ struct UndoMove
     char pieceCaptured;
     char lastColor;
 
-    int enPassantRow;
-    int enPassantCol;
+    int epIndex;
 
     bool whiteKingSide;
     bool whiteQueenSide;

@@ -29,68 +29,147 @@ Eval::Eval()
     mobilityValue['q'] = -1;
 }
 
-int Eval::GetPieceMobility(Board& board, int row, int col)
+int Eval::GetPieceMobility(Board& board, int currIndex)
 {
     int score = 0;
-    char piece = board.board[row][col];
+    char piece = board.GetPieceAtIndex(currIndex);
+    uint64_t sq = 1ULL << currIndex;
     bool isWhite = std::isupper(piece);
+    uint64_t friendlyPieces = (board.whitePieces & sq) ? board.whitePieces : board.blackPieces;
+    uint64_t enemyPieces = (board.whitePieces & sq) ? board.blackPieces : board.whitePieces;
     char lower = std::tolower(piece);
 
+    int row = currIndex / 8;
+    int col = currIndex % 8;
+    
     switch (lower)
     {
         case 'n':
         {
-            for (int i = 0; i < 8; i++)
+            uint64_t attacks = board.knightAttacks[row][col];
+
+            while (attacks)
             {
-                int dirRow = board.knightOffsets[i][0];
-                int dirCol = board.knightOffsets[i][1];
+                int newIndex = board.PopLSB(attacks);
+                int newSq = 1ULL << newIndex;
 
-                int newRow = row + dirRow;
-                int newCol = col + dirCol;
-
-                if (newRow < 0 || newRow >= 8) continue;
-                if (newCol < 0 || newCol >= 8) continue;
-
-                if (isWhite && board.IsWhitePiece(newRow, newCol)) continue;
-                else if (!isWhite && board.IsBlackPiece(newRow, newCol)) continue;
+                if (friendlyPieces & newSq) continue;
 
                 score += mobilityValue[piece];
             }
+
             break;
         }
         case 'b':
-        case 'r':
-        case 'q':
         {
-            int start = 0;
-            int end = 8;
-
-            if (lower == 'b') start = 4;
-            else if (lower == 'r') end = 4;
-
-            for (int i = start; i < end; i++)
+            for (int i = 0; i < 4; i++)
             {
-                int dirRow = board.dir[i][0];
-                int dirCol = board.dir[i][1];
+                int dirRow = board.bishopRays[i][0];
+                int dirCol = board.bishopRays[i][1];
 
                 int newRow = row + dirRow;
                 int newCol = col + dirCol;
 
                 while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
                 {
+                    int newIndex = newRow * 8 + newCol;
+                    uint64_t newSq = 1ULL << newIndex;
+
+                    if (friendlyPieces & newSq) break;
+
                     score += mobilityValue[piece];
 
-                    if (isWhite && board.IsWhitePiece(newRow, newCol)) break;
-                    else if (!isWhite && board.IsBlackPiece(newRow, newCol)) break;
+                    if (enemyPieces & newSq) break;
 
                     newRow += dirRow;
                     newCol += dirCol;
                 }
             }
+
+            break;
+        }
+        case 'r':
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                int dirRow = board.rookRays[i][0];
+                int dirCol = board.rookRays[i][1];
+
+                int newRow = row + dirRow;
+                int newCol = col + dirCol;
+
+                while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
+                {
+                    int newIndex = newRow * 8 + newCol;
+                    uint64_t newSq = 1ULL << newIndex;
+
+                    if (friendlyPieces & newSq) break;
+                    
+                    score += mobilityValue[piece];
+
+                    if (enemyPieces & newSq) break;
+
+                    newRow += dirRow;
+                    newCol += dirCol;
+                }
+            }
+
+            break;
+        }
+        case 'q':
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                int dirRow = board.bishopRays[i][0];
+                int dirCol = board.bishopRays[i][1];
+
+                int newRow = row + dirRow;
+                int newCol = col + dirCol;
+
+                while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
+                {
+                    int newIndex = newRow * 8 + newCol;
+                    uint64_t newSq = 1ULL << newIndex;
+
+                    if (friendlyPieces & newSq) break;
+                    
+                    score += mobilityValue[piece];
+
+                    if (enemyPieces & newSq) break;
+
+                    newRow += dirRow;
+                    newCol += dirCol;
+                }
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                int dirRow = board.rookRays[i][0];
+                int dirCol = board.rookRays[i][1];
+
+                int newRow = row + dirRow;
+                int newCol = col + dirCol;
+
+                while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
+                {
+                    int newIndex = newRow * 8 + newCol;
+                    uint64_t newSq = 1ULL << newIndex;
+
+                    if (friendlyPieces & newSq) break;
+                    
+                    score += mobilityValue[piece];
+
+                    if (enemyPieces & newSq) break;
+
+                    newRow += dirRow;
+                    newCol += dirCol;
+                }
+            }
+
             break;
         }
     }
-
+    
     return score;
 }
 
@@ -98,17 +177,17 @@ int Eval::GetEvalScore(Board& board)
 {
     int score = 0;
 
-    for (int r = 0; r < 8; r++)
+    uint64_t tempOccupied = board.occupiedSquares;
+
+    while (tempOccupied)
     {
-        for (int c = 0; c < 8; c++)
-        {
-            char piece = board.board[r][c];
+        int index = board.PopLSB(tempOccupied);
+        char piece = board.GetPieceAtIndex(index);
+        
+        if (piece == '.') continue;
 
-            if (piece == '.') continue;
-
-            score += this->pieceValue[piece];
-            score += GetPieceMobility(board, r, c);
-        }
+        score += this->pieceValue[piece];
+        score += GetPieceMobility(board, index); 
     }
     
     return score;

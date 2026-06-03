@@ -7,6 +7,8 @@
 #include <cctype>
 #include <cstring>
 #include <cstdint>
+#include <cmath>
+#include <cassert>
 
 void Board::SetupBoard()
 {
@@ -30,7 +32,7 @@ void Board::SetupBoard()
         }
     }
 
-    this->whitePieces = 0x000000000000FFFFULL;
+    this->whitePieces  = 0x000000000000FFFFULL;
     this->whitePawns   = 0x000000000000FF00ULL;
     this->whiteRooks   = 0x0000000000000081ULL;
     this->whiteKnights = 0x0000000000000042ULL;
@@ -38,13 +40,15 @@ void Board::SetupBoard()
     this->whiteQueens  = 0x0000000000000008ULL;
     this->whiteKing    = 0x0000000000000010ULL;
 
-    this->blackPieces = 0xFFFF000000000000ULL;
+    this->blackPieces  = 0xFFFF000000000000ULL;
     this->blackPawns   = 0x00FF000000000000ULL;
     this->blackRooks   = 0x8100000000000000ULL;
     this->blackKnights = 0x4200000000000000ULL;
     this->blackBishops = 0x2400000000000000ULL;
     this->blackQueens  = 0x0800000000000000ULL;
     this->blackKing    = 0x1000000000000000ULL;
+
+    this->occupiedSquares = whitePieces | blackPieces;
 
     //generate pawn attacks
     for (int r = 0; r < 8; r++)
@@ -139,17 +143,12 @@ void Board::SetupBoard()
         }
     }
 
-    this->occupiedSquares = whitePieces | blackPieces;
-
     this->color = 'w';
-    this->enPassantRow = -1;
-    this->enPassantCol = -1;
+    this->epIndex = -1;
     this->whiteKingSide = true;
     this->whiteQueenSide = true;
     this->blackKingSide = true;
     this->blackQueenSide = true;
-
-
 }
 
 void Board::PrintBoard()
@@ -190,6 +189,23 @@ void Board::PrintBoard()
         }
         std::cout << std::endl;
     }
+}
+
+std::string Board::IndexToSquare(int index)
+{
+    std::string sq;
+    sq.resize(2);
+
+    int rank = index / 8;
+    int file = index % 8;
+
+    char rankStr = '1' + rank;
+    char fileStr = 'a' + file;
+
+    sq[0] = fileStr;
+    sq[1] = rankStr;
+
+    return sq;
 }
 
 int Board::PieceZobristIndex(char piece)
@@ -250,18 +266,18 @@ Move Board::ParseMove(std::string input)
     int toRow;
     int toCol;
 
+    fromRow = input[1] - '1';
     fromCol = input[0] - 'a';
-    fromRow = 8 - (input[1] - '0');
 
     if (input == "O-O")
     {
         if (this->color == 'w')
         {
-            return {7, 4, 7, 6, this->board[7][4], CASTLEKING};
+            return {4, 6, CASTLEKING};
         }
         else
         {
-            return {0, 4, 0, 6, this->board[0][4], CASTLEKING};
+            return {60, 62, CASTLEKING};
         }
         
     }
@@ -269,34 +285,31 @@ Move Board::ParseMove(std::string input)
     {
         if (this->color == 'w')
         {
-            return {7, 4, 7, 2, this->board[7][4], CASTLEKING};
+            return {4, 2, CASTLEQUEEN};
         }
         else
         {
-            return {0, 4, 0, 2, this->board[0][4], CASTLEKING};
+            return {60, 58, CASTLEQUEEN};
         }
     }
 
     if (input[2] == 'x')
     {
+        toRow =  input[4] - '1';
         toCol = input[3] - 'a';
-        toRow =  8 - (input[4] - '0');
         move.moveType = CAPTURE;
     }
     else
     {
+        toRow = input[3] - '1';
         toCol = input[2] - 'a';
-        toRow = 8 - (input[3] - '0');
         move.moveType = NORMAL;
     }
 
-    move.fromRow = fromRow;
-    move.fromCol = fromCol;
-    move.toRow = toRow;
-    move.toCol = toCol;
+    move.fromIndex = fromRow * 8 + fromCol;
+    move.toIndex = toRow * 8 + toCol;
 
-    move.pieceMoved = this->board[fromRow][fromCol];
-
+    std::cout << move.fromIndex << " " << move.toIndex << std::endl;
     //std::cout << fromRow << " " << fromCol << " " << toRow << " " << toCol << " " << move.pieceMoved << std::endl;
 
     return move;
@@ -329,9 +342,10 @@ int Board::PopLSB(uint64_t& bb)
     return index;
 }
 
-bool Board::IsSquareAttacked(int row, int col, char attackerColor) 
+bool Board::IsSquareAttacked(int index, char attackerColor) 
 {
-    int index = row * 8 + col; //square to check
+    int row = index / 8;
+    int col = index % 8;
     uint64_t sq = 1ULL << index;
 
     //check pawns
@@ -419,40 +433,35 @@ bool Board::IsSquareAttacked(int row, int col, char attackerColor)
     return false;
 }
 
-bool Board::IsKingChecked(char color)
+bool Board::IsKingChecked(char kingColor)
 {
-    int kingRow = -1;
-    int kingCol = -1;
+    int kingIndex = -1;
+    uint64_t temp;
+    if (kingColor == 'w') temp = whiteKing;
+    else temp = blackKing;
 
-    if (color == 'w')
-    {
-        kingRow = this->whiteKingRow;
-        kingCol = this->whiteKingCol;
-    }
-    else
-    {
-        kingRow = this->blackKingRow;
-        kingCol = this->blackKingCol;
-    }
+    kingIndex = PopLSB(temp);
     
-    char enemyColor = (color == 'w') ? 'b' : 'w';
-    return IsSquareAttacked(kingRow, kingCol, enemyColor);
+    char enemyColor = (kingColor == 'w') ? 'b' : 'w';
+    return IsSquareAttacked(kingIndex, enemyColor);
 }
 
-void Board::GetPawnMoves(int currIndex, std::vector<Move>& moves)
+void Board::GetPawnMoves(std::vector<Move>& moves)
 {
-    int row = currIndex / 8;
-    int col = currIndex % 8;
-    uint64_t sq = 1ULL << currIndex;
-    int epIndex = enPassantRow * 8 + enPassantCol;
-
-    if (this->color == 'w')
+    if (color == 'w')
     {
+        uint64_t epSquare = (epIndex != -1) ? (1ULL << epIndex) : 0ULL;
+
         uint64_t singlePushes = (whitePawns << 8) & ~occupiedSquares;
+        uint64_t doublePushes = (singlePushes << 8) & ~occupiedSquares & RANK_4;
+        uint64_t leftCaptures = ((whitePawns & ~FILE_A) << 7) & (blackPieces | epSquare);
+        uint64_t rightCaptures = ((whitePawns & ~FILE_H) << 9) & (blackPieces | epSquare);
+
         while (singlePushes)
         {
             int toIndex = PopLSB(singlePushes);
             int fromIndex = toIndex - 8;
+
             if (toIndex / 8 == 7)
             {
                 moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
@@ -463,47 +472,23 @@ void Board::GetPawnMoves(int currIndex, std::vector<Move>& moves)
             else
             {
                 moves.push_back({fromIndex, toIndex, NORMAL});
-
-                if (fromIndex / 8 == 1 && !(occupiedSquares & (1ULL << (toIndex + 8))))
-                {
-                    moves.push_back({fromIndex, toIndex + 8, PAWNDOUBLE});
-                }
             }
         }
 
-        uint64_t attacks = whitePawnAttacks[row][col] & blackPieces;
-        while (attacks)
+        while (doublePushes)
         {
-            int toIndex = PopLSB(attacks);
+            int toIndex = PopLSB(doublePushes);
+            int fromIndex = toIndex - 16;
+
+            moves.push_back({fromIndex, toIndex, PAWNDOUBLE});
+        }
+
+        while (leftCaptures)
+        {
+            int toIndex = PopLSB(leftCaptures);
+            int fromIndex = toIndex - 7;
 
             if (toIndex / 8 == 7)
-            {
-                moves.push_back({currIndex, toIndex, PROMOTION, KNIGHT});
-                moves.push_back({currIndex, toIndex, PROMOTION, BISHOP});
-                moves.push_back({currIndex, toIndex, PROMOTION, ROOK});
-                moves.push_back({currIndex, toIndex, PROMOTION, QUEEN});
-            }
-            else
-            {
-                if (epIndex == toIndex)
-                {
-                    moves.push_back({currIndex, toIndex, ENPASSANT});
-                }
-                else
-                {
-                    moves.push_back({currIndex, toIndex, CAPTURE});
-                }
-            }
-        }
-    }
-    else //black
-    {
-        uint64_t singlePushes = (blackPawns >> 8) & ~occupiedSquares;
-        while (singlePushes)
-        {
-            int toIndex = PopLSB(singlePushes);
-            int fromIndex = toIndex + 8;
-            if (toIndex / 8 == 0)
             {
                 moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
                 moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
@@ -512,286 +497,413 @@ void Board::GetPawnMoves(int currIndex, std::vector<Move>& moves)
             }
             else
             {
-                moves.push_back({fromIndex, toIndex, NORMAL});
-
-                if (fromIndex / 8 == 6 && !(occupiedSquares & (1ULL << (toIndex - 8))))
+                if (toIndex == epIndex)
                 {
-                    moves.push_back({fromIndex, toIndex - 8, PAWNDOUBLE});
+                    moves.push_back({fromIndex, toIndex, ENPASSANT});
+
+                    assert(GetPieceAtIndex(toIndex - 8) == 'p');
+                }
+                else
+                {
+                    moves.push_back({fromIndex, toIndex, CAPTURE});
                 }
             }
         }
 
-        uint64_t attacks = blackPawnAttacks[row][col] & whitePieces;
-        while (attacks)
+        while (rightCaptures)
         {
-            int toIndex = PopLSB(attacks);
+            int toIndex = PopLSB(rightCaptures);
+            int fromIndex = toIndex - 9;
 
-            if (toIndex / 8 == 0)
+            if (toIndex / 8 == 7)
             {
-                moves.push_back({currIndex, toIndex, PROMOTION, KNIGHT});
-                moves.push_back({currIndex, toIndex, PROMOTION, BISHOP});
-                moves.push_back({currIndex, toIndex, PROMOTION, ROOK});
-                moves.push_back({currIndex, toIndex, PROMOTION, QUEEN});
+                moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
+                moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
+                moves.push_back({fromIndex, toIndex, PROMOTION, ROOK});
+                moves.push_back({fromIndex, toIndex, PROMOTION, QUEEN});
             }
             else
             {
-                if (epIndex == toIndex)
+                if (toIndex == epIndex)
                 {
-                    moves.push_back({currIndex, toIndex, ENPASSANT});
+                    moves.push_back({fromIndex, toIndex, ENPASSANT});
+
+                    assert(GetPieceAtIndex(toIndex - 8) == 'p');
                 }
                 else
                 {
-                    moves.push_back({currIndex, toIndex, CAPTURE});
-                }
-            }
-        }
-    }
-}
-
-void Board::GetKnightMoves(int currIndex, std::vector<Move>& moves)
-{
-    int row = currIndex / 8;
-    int col = currIndex % 8;
-    uint64_t attacks = knightAttacks[row][col];
-
-    if (this->color == 'w')
-    {
-        while (attacks)
-        {
-            int toIndex = PopLSB(attacks);
-            uint64_t toSq = 1ULL << toIndex;
-            
-            if (!(whitePieces & toSq))
-            {
-                if (blackPieces & toSq)
-                {
-                    moves.push_back({currIndex, toIndex, CAPTURE});
-                }
-                else
-                {
-                    moves.push_back({currIndex, toIndex, NORMAL});
+                    moves.push_back({fromIndex, toIndex, CAPTURE});
                 }
             }
         }
     }
     else
     {
+        uint64_t epSquare = (epIndex != -1) ? (1ULL << epIndex) : 0ULL;
+
+        uint64_t singlePushes = (blackPawns >> 8) & ~occupiedSquares;
+        uint64_t doublePushes = (singlePushes >> 8) & ~occupiedSquares & RANK_5;
+        uint64_t leftCaptures = ((blackPawns & ~FILE_A) >> 9) & (whitePieces | epSquare);
+        uint64_t rightCaptures = ((blackPawns & ~FILE_H) >> 7) & (whitePieces | epSquare);
+
+        while (singlePushes)
+        {
+            int toIndex = PopLSB(singlePushes);
+            int fromIndex = toIndex + 8;
+
+            if (toIndex / 8 == 0)
+            {
+                moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
+                moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
+                moves.push_back({fromIndex, toIndex, PROMOTION, ROOK});
+                moves.push_back({fromIndex, toIndex, PROMOTION, QUEEN});
+            }
+            else
+            {
+                moves.push_back({fromIndex, toIndex, NORMAL});
+            }
+        }
+
+        while (doublePushes)
+        {
+            int toIndex = PopLSB(doublePushes);
+            int fromIndex = toIndex + 16;
+
+            moves.push_back({fromIndex, toIndex, PAWNDOUBLE});
+        }
+
+        while (leftCaptures)
+        {
+            int toIndex = PopLSB(leftCaptures);
+            int fromIndex = toIndex + 9;
+
+            if (toIndex / 8 == 0)
+            {
+                moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
+                moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
+                moves.push_back({fromIndex, toIndex, PROMOTION, ROOK});
+                moves.push_back({fromIndex, toIndex, PROMOTION, QUEEN});
+            }
+            else
+            {
+                if (toIndex == epIndex)
+                {
+                    moves.push_back({fromIndex, toIndex, ENPASSANT});
+
+                    assert(GetPieceAtIndex(toIndex + 8) == 'P');
+                }
+                else
+                {
+                    moves.push_back({fromIndex, toIndex, CAPTURE});
+                }
+            }
+        }
+
+        while (rightCaptures)
+        {
+            int toIndex = PopLSB(rightCaptures);
+            int fromIndex = toIndex + 7;
+
+            if (toIndex / 8 == 0)
+            {
+                moves.push_back({fromIndex, toIndex, PROMOTION, KNIGHT});
+                moves.push_back({fromIndex, toIndex, PROMOTION, BISHOP});
+                moves.push_back({fromIndex, toIndex, PROMOTION, ROOK});
+                moves.push_back({fromIndex, toIndex, PROMOTION, QUEEN});
+            }
+            else
+            {
+                if (toIndex == epIndex)
+                {
+                    moves.push_back({fromIndex, toIndex, ENPASSANT});
+
+                    assert(GetPieceAtIndex(toIndex + 8) == 'P');
+                }
+                else
+                {
+                    moves.push_back({fromIndex, toIndex, CAPTURE});
+                }
+            }
+        }
+    }
+}
+
+void Board::GetKnightMoves(std::vector<Move>& moves)
+{
+    uint64_t knights = (this->color == 'w') ? whiteKnights : blackKnights;
+    uint64_t friendlyPieces = (this->color == 'w') ? whitePieces : blackPieces;
+    uint64_t enemyPieces = (this->color == 'w') ? blackPieces : whitePieces;
+
+    while (knights)
+    {
+        int fromIndex = PopLSB(knights);
+        int row = fromIndex / 8;
+        int col = fromIndex % 8;
+        uint64_t attacks = knightAttacks[row][col] & ~friendlyPieces;
+
         while (attacks)
         {
             int toIndex = PopLSB(attacks);
             uint64_t toSq = 1ULL << toIndex;
-            
-            if (!(blackPieces & toSq))
+
+            if (enemyPieces & toSq) moves.push_back({fromIndex, toIndex, CAPTURE});
+            else moves.push_back({fromIndex, toIndex, NORMAL});
+        }
+    }
+}
+
+void Board::GetBishopMoves(std::vector<Move>& moves)
+{
+    uint64_t bishops = (this->color == 'w') ? whiteBishops : blackBishops;
+    uint64_t friendlyPieces = (this->color == 'w') ? whitePieces : blackPieces;
+    uint64_t enemyPieces = (this->color == 'w') ? blackPieces : whitePieces;
+
+    while (bishops)
+    {
+        int fromIndex = PopLSB(bishops);
+        int row = fromIndex / 8;
+        int col = fromIndex % 8;
+
+        for (int i = 0; i < 4; i++)
+        {
+            int dirRow = bishopRays[i][0];
+            int dirCol = bishopRays[i][1];
+
+            int newRow = row + dirRow;
+            int newCol = col + dirCol;
+
+            while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
             {
-                if (whitePieces & toSq)
+                int newIndex = newRow * 8 + newCol;
+                uint64_t newSq = 1ULL << newIndex;
+
+                if (friendlyPieces & newSq) break;
+
+                if (enemyPieces & newSq)
                 {
-                    moves.push_back({currIndex, toIndex, CAPTURE});
+                    moves.push_back({fromIndex, newIndex, CAPTURE});
+                    break;
                 }
                 else
                 {
-                    moves.push_back({currIndex, toIndex, NORMAL});
-                }
+                    moves.push_back({fromIndex, newIndex, NORMAL});
+                } 
+
+                newRow += dirRow;
+                newCol += dirCol;
             }
         }
     }
 }
 
-void Board::GetBishopMoves(int currIndex, std::vector<Move>& moves)
+void Board::GetRookMoves(std::vector<Move>& moves)
 {
-    int row = currIndex / 8;
-    int col = currIndex % 8;
+    uint64_t rooks = (this->color == 'w') ? whiteRooks : blackRooks;
+    uint64_t friendlyPieces = (this->color == 'w') ? whitePieces : blackPieces;
+    uint64_t enemyPieces = (this->color == 'w') ? blackPieces : whitePieces;
 
-    for (int i = 0; i < 4; i++)
+    while (rooks)
     {
-        int dirRow = bishopRays[i][0];
-        int dirCol = bishopRays[i][1];
+        int fromIndex = PopLSB(rooks);
+        int row = fromIndex / 8;
+        int col = fromIndex % 8;
 
-        int newRow = row + dirRow;
-        int newCol = col + dirCol;
-
-        while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
+        for (int i = 0; i < 4; i++)
         {
-            int newIndex = newRow * 8 + newCol;
-            uint64_t newSq = 1ULL << newIndex;
+            int dirRow = rookRays[i][0];
+            int dirCol = rookRays[i][1];
 
-            if (this->color == 'w')
+            int newRow = row + dirRow;
+            int newCol = col + dirCol;
+
+            while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
             {
-                //stop if target square is a friendly piece
-                if (whitePieces & newSq) break;
-                //stop if target square is an enemy piece
-                else if (blackPieces & newSq)
+                int newIndex = newRow * 8 + newCol;
+                uint64_t newSq = 1ULL << newIndex;
+
+                if (friendlyPieces & newSq) break;
+
+                if (enemyPieces & newSq)
                 {
-                    moves.push_back({currIndex, newIndex, CAPTURE});
+                    moves.push_back({fromIndex, newIndex, CAPTURE});
                     break;
                 }
-                else moves.push_back({currIndex, newIndex, NORMAL});
-            }
-            else
-            {
-                if (blackPieces & newSq) break;
-                else if (whitePieces & newSq)
+                else
                 {
-                    moves.push_back({currIndex, newIndex, CAPTURE});
-                    break;
-                }
-                else moves.push_back({currIndex, newIndex, NORMAL});
+                    moves.push_back({fromIndex, newIndex, NORMAL});
+                } 
+                
+                newRow += dirRow;
+                newCol += dirCol;
             }
-
-            newRow += dirRow;
-            newCol += dirCol;
         }
     }
 }
 
-void Board::GetRookMoves(int currIndex, std::vector<Move>& moves)
+void Board::GetQueenMoves(std::vector<Move>& moves)
 {
-    int row = currIndex / 8;
-    int col = currIndex % 8;
+    uint64_t queens = (this->color == 'w') ? whiteQueens : blackQueens;
+    uint64_t friendlyPieces = (this->color == 'w') ? whitePieces : blackPieces;
+    uint64_t enemyPieces = (this->color == 'w') ? blackPieces : whitePieces;
 
-    for (int i = 0; i < 4; i++)
+    while (queens)
     {
-        int dirRow = rookRays[i][0];
-        int dirCol = rookRays[i][1];
+        int fromIndex = PopLSB(queens);
+        int row = fromIndex / 8;
+        int col = fromIndex % 8;
 
-        int newRow = row + dirRow;
-        int newCol = col + dirCol;
-
-        while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
+        for (int i = 0; i < 4; i++)
         {
-            int newIndex = newRow * 8 + newCol;
-            uint64_t newSq = 1ULL << newIndex;
+            int dirRow = bishopRays[i][0];
+            int dirCol = bishopRays[i][1];
 
-            if (this->color == 'w')
+            int newRow = row + dirRow;
+            int newCol = col + dirCol;
+
+            while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
             {
-                //stop if target square is a friendly piece
-                if (whitePieces & newSq) break;
-                //stop if target square is an enemy piece
-                else if (blackPieces & newSq)
+                int newIndex = newRow * 8 + newCol;
+                uint64_t newSq = 1ULL << newIndex;
+
+                if (friendlyPieces & newSq) break;
+
+                if (enemyPieces & newSq)
                 {
-                    moves.push_back({currIndex, newIndex, CAPTURE});
+                    moves.push_back({fromIndex, newIndex, CAPTURE});
                     break;
                 }
-                else moves.push_back({currIndex, newIndex, NORMAL});
-            }
-            else
-            {
-                if (blackPieces & newSq) break;
-                else if (whitePieces & newSq)
+                else
                 {
-                    moves.push_back({currIndex, newIndex, CAPTURE});
+                    moves.push_back({fromIndex, newIndex, NORMAL});
+                } 
+
+                newRow += dirRow;
+                newCol += dirCol;
+            }
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            int dirRow = rookRays[i][0];
+            int dirCol = rookRays[i][1];
+
+            int newRow = row + dirRow;
+            int newCol = col + dirCol;
+
+            while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8)
+            {
+                int newIndex = newRow * 8 + newCol;
+                uint64_t newSq = 1ULL << newIndex;
+
+                if (friendlyPieces & newSq) break;
+
+                if (enemyPieces & newSq)
+                {
+                    moves.push_back({fromIndex, newIndex, CAPTURE});
                     break;
                 }
-                else moves.push_back({currIndex, newIndex, NORMAL});
+                else
+                {
+                    moves.push_back({fromIndex, newIndex, NORMAL});
+                } 
+                
+                newRow += dirRow;
+                newCol += dirCol;
             }
-
-            newRow += dirRow;
-            newCol += dirCol;
         }
     }
 }
 
-void Board::GetQueenMoves(int index, std::vector<Move>& moves)
+void Board::GetKingMoves(std::vector<Move>& moves)
 {
-    this->GetBishopMoves(index, moves);
-    this->GetRookMoves(index, moves);
-}
+    uint64_t king = (this->color == 'w') ? whiteKing : blackKing;
+    uint64_t friendlyPieces = (this->color == 'w') ? whitePieces : blackPieces;
+    uint64_t enemyPieces = (this->color == 'w') ? blackPieces : whitePieces;
 
-void Board::GetKingMoves(int currIndex, std::vector<Move>& moves)
-{
-    int row = currIndex / 8;
-    int col = currIndex % 8;
-    uint64_t attacks = kingAttacks[row][col];
+    int fromIndex = PopLSB(king);
+    int row = fromIndex / 8;
+    int col = fromIndex % 8;
+    
+    uint64_t attacks = kingAttacks[row][col] & ~friendlyPieces;
 
     while (attacks)
     {
         int toIndex = PopLSB(attacks);
         uint64_t newSq = 1ULL << toIndex;
 
-        if (this->color == 'w')
-        {
-            if (blackPieces & newSq) moves.push_back({currIndex, toIndex, CAPTURE});
-        }
-        else
-        {
-            if (whitePieces & newSq) moves.push_back({currIndex, toIndex, CAPTURE});
-        }
-    
-        if (!(occupiedSquares & newSq)) moves.push_back({currIndex, toIndex, NORMAL});
+        if (friendlyPieces & newSq) continue;
+        if (enemyPieces & newSq) moves.push_back({fromIndex, toIndex, CAPTURE});
+        else moves.push_back({fromIndex, toIndex, NORMAL});
     }
 
     //castling
     if (this->color == 'w')
     {
         if (this->whiteKingSide 
-            && !(occupiedSquares & (1ULL << (currIndex + 1))) 
-            && !(occupiedSquares & (1ULL << (currIndex + 2)))
+            && !(occupiedSquares & (1ULL << (fromIndex + 1))) 
+            && !(occupiedSquares & (1ULL << (fromIndex + 2)))
             && !IsKingChecked('w')
-            && !IsSquareAttacked(row, col + 1, 'b')
-            && !IsSquareAttacked(row, col + 2, 'b')
+            && !IsSquareAttacked(fromIndex + 1, 'b')
+            && !IsSquareAttacked(fromIndex + 2, 'b')
             && (whiteRooks & (1ULL << 7)))
         {
-            moves.push_back({currIndex, currIndex + 2, CASTLEKING});
+            moves.push_back({fromIndex, fromIndex + 2, CASTLEKING});
         }
         if (this->whiteQueenSide 
-            && !(occupiedSquares & (1ULL << (currIndex - 1))) 
-            && !(occupiedSquares & (1ULL << (currIndex - 2)))
-            && !(occupiedSquares & (1ULL << (currIndex - 3)))
+            && !(occupiedSquares & (1ULL << (fromIndex - 1))) 
+            && !(occupiedSquares & (1ULL << (fromIndex - 2)))
+            && !(occupiedSquares & (1ULL << (fromIndex - 3)))
             && !IsKingChecked('w')
-            && !IsSquareAttacked(row, col - 1, 'b')
-            && !IsSquareAttacked(row, col - 2, 'b')
+            && !IsSquareAttacked(fromIndex - 1, 'b')
+            && !IsSquareAttacked(fromIndex - 2, 'b')
             && (whiteRooks & (1ULL << 0)))
         {
-            moves.push_back({currIndex, currIndex - 2, CASTLEQUEEN});
+            moves.push_back({fromIndex, fromIndex - 2, CASTLEQUEEN});
         }
     }
     else
     {
         if (this->blackKingSide 
-            && !(occupiedSquares & (1ULL << (currIndex + 1))) 
-            && !(occupiedSquares & (1ULL << (currIndex + 2)))
+            && !(occupiedSquares & (1ULL << (fromIndex + 1))) 
+            && !(occupiedSquares & (1ULL << (fromIndex + 2)))
             && !IsKingChecked('b')
-            && !IsSquareAttacked(row, col + 1, 'w')
-            && !IsSquareAttacked(row, col + 2, 'w')
+            && !IsSquareAttacked(fromIndex + 1, 'w')
+            && !IsSquareAttacked(fromIndex + 2, 'w')
             && (blackRooks & (1ULL << 63)))
         {
-            moves.push_back({currIndex, currIndex + 2, CASTLEKING});
+            moves.push_back({fromIndex, fromIndex + 2, CASTLEKING});
         }
         if (this->blackQueenSide 
-            && !(occupiedSquares & (1ULL << (currIndex - 1))) 
-            && !(occupiedSquares & (1ULL << (currIndex - 2)))
-            && !(occupiedSquares & (1ULL << (currIndex - 3)))
+            && !(occupiedSquares & (1ULL << (fromIndex - 1))) 
+            && !(occupiedSquares & (1ULL << (fromIndex - 2)))
+            && !(occupiedSquares & (1ULL << (fromIndex - 3)))
             && !IsKingChecked('b')
-            && !IsSquareAttacked(row, col - 1, 'w')
-            && !IsSquareAttacked(row, col - 2, 'w')
+            && !IsSquareAttacked(fromIndex - 1, 'w')
+            && !IsSquareAttacked(fromIndex - 2, 'w')
             && (blackRooks & (1ULL << 56)))
         {
-            moves.push_back({currIndex, currIndex - 2, CASTLEQUEEN});
+            moves.push_back({fromIndex, fromIndex - 2, CASTLEQUEEN});
         }
     }
 }
 
 void Board::GetLegalMoves(std::vector<Move>& moves)
 {
+    moves.clear();
+
     uint64_t pawns   = (color == 'w') ? whitePawns : blackPawns;
     uint64_t knights = (color == 'w') ? whiteKnights : blackKnights;
     uint64_t bishops = (color == 'w') ? whiteBishops : blackBishops;
     uint64_t rooks   = (color == 'w') ? whiteRooks : blackRooks;
     uint64_t queens  = (color == 'w') ? whiteQueens : blackQueens;
     uint64_t king    = (color == 'w') ? whiteKing : blackKing;
-
-    uint64_t pieces = pawns | knights | bishops | rooks | queens | king;
-    while (pieces)
-    {
-        int index = PopLSB(pieces);
-        uint64_t sq = 1ULL << index;
-
-        if (pawns & sq) GetPawnMoves(index, moves);
-        else if (knights & sq) GetKnightMoves(index, moves);
-        else if (bishops & sq) GetBishopMoves(index, moves);
-        else if (rooks & sq) GetRookMoves(index, moves);
-        else if (queens & sq) GetQueenMoves(index, moves);
-        else if (king & sq) GetKingMoves(index, moves);
-    }
+    
+    GetPawnMoves(moves);
+    GetKnightMoves(moves);
+    GetBishopMoves(moves);
+    GetRookMoves(moves);
+    GetQueenMoves(moves);
+    GetKingMoves(moves);
 }
 
 void Board::SwitchColors()
@@ -811,6 +923,8 @@ UndoMove Board::MakeMove(const Move& move)
     //std::cout << "Start Make Hash: " << this->hash << std::endl;
     UndoMove undo;
 
+    //std::cout << "Move: fromIndex = " << move.fromIndex << ", toIndex = " << move.toIndex << " moveType: " << move.moveType << std::endl;
+
     int fromRow = move.fromIndex / 8;
     int fromCol = move.fromIndex % 8;
     int toRow = move.toIndex / 8;
@@ -826,8 +940,7 @@ UndoMove Board::MakeMove(const Move& move)
     undo.pieceCaptured = toPiece;
     undo.lastColor = this->color;
 
-    undo.enPassantRow = this->enPassantRow;
-    undo.enPassantCol = this->enPassantCol;
+    undo.epIndex = this->epIndex;
 
     undo.whiteKingSide = whiteKingSide;
     undo.whiteQueenSide = whiteQueenSide;
@@ -845,9 +958,9 @@ UndoMove Board::MakeMove(const Move& move)
     this->hash ^= Engine::pieceSquareVals[toRow][toCol][fromPieceIndex];
     this->hash ^= Engine::sideKey;
 
-    if (this->enPassantCol != -1)
+    if (this->epIndex != -1)
     {
-        this->hash ^= Engine::epKey[this->enPassantCol];
+        this->hash ^= Engine::epKey[this->epIndex % 8];
     }
 
     int oldCastleIndex =
@@ -891,126 +1004,120 @@ UndoMove Board::MakeMove(const Move& move)
         if (toRow == 0 && toCol == 0) blackQueenSide = false;
     }
 
-    //apply normal moves
-    if (move.moveType != CASTLEKING && move.moveType != CASTLEQUEEN)
+    this->epIndex = -1;
+
+    if (move.moveType == NORMAL)
+    {
+        RemovePieceAtIndex(fromPiece, move.fromIndex);
+        AddPieceAtIndex(fromPiece, move.toIndex);
+    }
+    else if (move.moveType == CAPTURE)
+    {
+        //std::cout << "Capturing piece: " << GetPieceAtIndex(move.fromIndex) << ", Captured piece: " << GetPieceAtIndex(move.toIndex) << std::endl;
+        RemovePieceAtIndex(toPiece, move.toIndex);
+        RemovePieceAtIndex(fromPiece, move.fromIndex);
+        AddPieceAtIndex(fromPiece, move.toIndex);
+    }
+    else if (move.moveType == PAWNDOUBLE)
     {
         RemovePieceAtIndex(fromPiece, move.fromIndex);
         AddPieceAtIndex(fromPiece, move.toIndex);
 
-        if (fromPiece == 'K')
+        if (fromPiece == 'P')
         {
-            this->whiteKingRow = toRow;
-            this->whiteKingCol = toCol;
+            this->epIndex = move.toIndex - 8;
         }
-        else if (fromPiece == 'k')
+        else if (fromPiece == 'p')
         {
-            this->blackKingRow = toRow;
-            this->blackKingCol = toCol;
+            this->epIndex = move.toIndex + 8;
         }
 
-        this->enPassantRow = -1;
-        this->enPassantCol = -1;
+        //std::cout << "New epIndex: " << this->epIndex << ", fromRow: " << fromRow << ", fromCol: " << fromCol
+        //          << ", toRow: " << toRow << ", toCol: " << toCol << ", fromPiece: " << fromPiece << std::endl;
+    }
+    else if (move.moveType == PROMOTION)
+    {
+        RemovePieceAtIndex(fromPiece, move.fromIndex);
 
-        if (move.moveType == ENPASSANT)
+        if (toPiece != '.')
         {
-            if (fromPiece == 'P')
-            {
-                int pawnIndex = PieceZobristIndex('p');
-                RemovePieceAtIndex('p', move.toIndex - 8);
-                hash ^= Engine::pieceSquareVals[toRow + 1][toCol][pawnIndex];
-            }
-            else if (fromPiece == 'p')
-            {
-                int pawnIndex = PieceZobristIndex('P');
-                RemovePieceAtIndex('P', move.toIndex + 8);
-                hash ^= Engine::pieceSquareVals[toRow - 1][toCol][pawnIndex];
-            }
+            RemovePieceAtIndex(toPiece, move.toIndex);
         }
-        else if (move.moveType == PAWNDOUBLE)
-        {
-            this->enPassantRow = -1;
-            this->enPassantCol = -1;
 
-            if (fromPiece == 'P')
-            {
-                this->enPassantRow = toRow + 1;
-                this->enPassantCol = toCol;
-            }
-            else if (fromPiece == 'p')
-            {
-                this->enPassantRow = toRow - 1;
-                this->enPassantCol = toCol;
-            }
-        }
-        else if (move.moveType == PROMOTION)
+        switch (move.promoteType)
         {
-            switch (move.promoteType)
+            case KNIGHT:
             {
-                case KNIGHT:
+                if (fromPiece == 'P')
                 {
-                    if (fromPiece == 'P')
-                    {
-                        RemovePieceAtIndex('P', move.toIndex);
-                        AddPieceAtIndex('N', move.toIndex);
-                    }
-                    else
-                    {
-                        RemovePieceAtIndex('p', move.toIndex);
-                        AddPieceAtIndex('n', move.toIndex);
-                    }
-                    break;
+                    AddPieceAtIndex('N', move.toIndex);
                 }
-                case BISHOP:
+                else
                 {
-                    if (fromPiece == 'P')
-                    {
-                        RemovePieceAtIndex('P', move.toIndex);
-                        AddPieceAtIndex('B', move.toIndex);
-                    }
-                    else
-                    {
-                        RemovePieceAtIndex('p', move.toIndex);
-                        AddPieceAtIndex('b', move.toIndex);
-                    }
-                    break;
+                    AddPieceAtIndex('n', move.toIndex);
                 }
-                case ROOK:
+                break;
+            }
+            case BISHOP:
+            {
+                if (fromPiece == 'P')
                 {
-                    if (fromPiece == 'P')
-                    {
-                        RemovePieceAtIndex('P', move.toIndex);
-                        AddPieceAtIndex('R', move.toIndex);
-                    }
-                    else
-                    {
-                        RemovePieceAtIndex('p', move.toIndex);
-                        AddPieceAtIndex('r', move.toIndex);
-                    }
-                    break;
+                    AddPieceAtIndex('B', move.toIndex);
                 }
-                case QUEEN:
+                else
                 {
-                    if (fromPiece == 'P')
-                    {
-                        RemovePieceAtIndex('P', move.toIndex);
-                        AddPieceAtIndex('Q', move.toIndex);
-                    }
-                    else
-                    {
-                        RemovePieceAtIndex('p', move.toIndex);
-                        AddPieceAtIndex('q', move.toIndex);
-                    }
-                    break;
+                    AddPieceAtIndex('b', move.toIndex);
                 }
+                break;
+            }
+            case ROOK:
+            {
+                if (fromPiece == 'P')
+                {
+                    AddPieceAtIndex('R', move.toIndex);
+                }
+                else
+                {
+                    AddPieceAtIndex('r', move.toIndex);
+                }
+                break;
+            }
+            case QUEEN:
+            {
+                if (fromPiece == 'P')
+                {
+                    AddPieceAtIndex('Q', move.toIndex);
+                }
+                else
+                {
+                    AddPieceAtIndex('q', move.toIndex);
+                }
+                break;
             }
         }
     }
-    //apply castling moves
-    if (move.moveType == CASTLEKING)
-    {   
-        this->enPassantRow = -1;
-        this->enPassantCol = -1;
+    else if (move.moveType == ENPASSANT)
+    {
+        this->epIndex = -1;
 
+        RemovePieceAtIndex(fromPiece, move.fromIndex);
+        AddPieceAtIndex(fromPiece, move.toIndex);
+
+        if (fromPiece == 'P')
+        {
+            int pawnIndex = PieceZobristIndex('p');
+            RemovePieceAtIndex('p', move.toIndex - 8);
+            hash ^= Engine::pieceSquareVals[toRow + 1][toCol][pawnIndex];
+        }
+        else if (fromPiece == 'p')
+        {
+            int pawnIndex = PieceZobristIndex('P');
+            RemovePieceAtIndex('P', move.toIndex + 8);
+            hash ^= Engine::pieceSquareVals[toRow - 1][toCol][pawnIndex];
+        }
+    }
+    else if (move.moveType == CASTLEKING)
+    {   
         if (fromPiece == 'K')
         {
             RemovePieceAtIndex('K', 4);
@@ -1022,9 +1129,6 @@ UndoMove Board::MakeMove(const Move& move)
             int rookIndex = PieceZobristIndex('R');
             this->hash ^= Engine::pieceSquareVals[7][7][rookIndex];
             this->hash ^= Engine::pieceSquareVals[7][5][rookIndex];
-
-            this->whiteKingRow = 0;
-            this->whiteKingCol = 6;
         }
         else
         {
@@ -1037,16 +1141,10 @@ UndoMove Board::MakeMove(const Move& move)
             int rookIndex = PieceZobristIndex('r');
             this->hash ^= Engine::pieceSquareVals[0][7][rookIndex];
             this->hash ^= Engine::pieceSquareVals[0][5][rookIndex];
-
-            this->blackKingRow = 7;
-            this->blackKingCol = 6;
         }
     }
     else if (move.moveType == CASTLEQUEEN)
     {
-        this->enPassantRow = -1;
-        this->enPassantCol = -1;
-
         if (fromPiece == 'K')
         {
             RemovePieceAtIndex('K', 4);
@@ -1058,9 +1156,6 @@ UndoMove Board::MakeMove(const Move& move)
             int rookIndex = PieceZobristIndex('R');
             this->hash ^= Engine::pieceSquareVals[7][0][rookIndex];
             this->hash ^= Engine::pieceSquareVals[7][3][rookIndex];
-
-            this->whiteKingRow = 0;
-            this->whiteKingCol = 2;
         }
         else
         {
@@ -1073,9 +1168,6 @@ UndoMove Board::MakeMove(const Move& move)
             int rookIndex = PieceZobristIndex('r');
             this->hash ^= Engine::pieceSquareVals[0][0][rookIndex];
             this->hash ^= Engine::pieceSquareVals[0][3][rookIndex];
-
-            this->blackKingRow = 7;
-            this->blackKingCol = 2;
         }
     }
 
@@ -1086,10 +1178,17 @@ UndoMove Board::MakeMove(const Move& move)
     (blackQueenSide ? 8 : 0);
     this->hash ^= Engine::castlingKey[newCastleIndex];
 
-    if (this->enPassantCol != -1)
+    if (this->epIndex != -1)
     {
-        this->hash ^= Engine::epKey[this->enPassantCol];
+        this->hash ^= Engine::epKey[this->epIndex % 8];
     }
+
+    occupiedSquares = whitePieces | blackPieces;
+
+    /*
+    std::cout << move.fromIndex << " " << move.toIndex << std::endl;
+    PrintBoard();
+    */
 
     SwitchColors();
 
@@ -1119,9 +1218,9 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
     (blackQueenSide ? 8 : 0);
     this->hash ^= Engine::castlingKey[newCastleIndex];
 
-    if (this->enPassantCol != -1)
+    if (this->epIndex != -1)
     {
-        this->hash ^= Engine::epKey[this->enPassantCol];
+        this->hash ^= Engine::epKey[this->epIndex % 8];
     }
 
     this->color = undo.lastColor;
@@ -1131,8 +1230,7 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
     this->blackKingSide = undo.blackKingSide;
     this->blackQueenSide = undo.blackQueenSide;
 
-    this->enPassantRow = undo.enPassantRow;
-    this->enPassantCol = undo.enPassantCol;
+    this->epIndex = undo.epIndex;
 
     this->hash ^= Engine::pieceSquareVals[fromRow][fromCol][fromPieceIndex];
     this->hash ^= Engine::pieceSquareVals[toRow][toCol][fromPieceIndex];
@@ -1142,9 +1240,9 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
     }
     this->hash ^= Engine::sideKey;
 
-    if (this->enPassantCol != -1)
+    if (this->epIndex != -1)
     {
-        this->hash ^= Engine::epKey[this->enPassantCol];
+        this->hash ^= Engine::epKey[this->epIndex % 8];
     }
 
     int oldCastleIndex =
@@ -1154,38 +1252,16 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
     (undo.blackQueenSide ? 8 : 0);
     this->hash ^= Engine::castlingKey[oldCastleIndex];
 
-    if (move.moveType == NORMAL)
+    if (move.moveType == NORMAL || move.moveType == PAWNDOUBLE)
     {
         RemovePieceAtIndex(fromPiece, move.toIndex);
         AddPieceAtIndex(fromPiece, move.fromIndex);
-
-        if (fromPiece == 'K')
-        {
-            this->whiteKingRow = move.fromIndex / 8;
-            this->whiteKingCol = move.fromIndex % 8;
-        }
-        else if (fromPiece == 'k')
-        {
-            this->blackKingRow = move.fromIndex / 8;
-            this->blackKingCol = move.fromIndex % 8;
-        }
     }
     else if (move.moveType == CAPTURE)
     {
         RemovePieceAtIndex(fromPiece, move.toIndex);
         AddPieceAtIndex(fromPiece, move.fromIndex);
         AddPieceAtIndex(toPiece, move.toIndex);
-
-        if (fromPiece == 'K')
-        {
-            this->whiteKingRow = move.fromIndex / 8;
-            this->whiteKingCol = move.fromIndex % 8;
-        }
-        else if (fromPiece == 'k')
-        {
-            this->blackKingRow = move.fromIndex / 8;
-            this->blackKingCol = move.fromIndex % 8;
-        }
     }
     else if (move.moveType == ENPASSANT)
     {
@@ -1219,9 +1295,6 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
 
             RemovePieceAtIndex('R', 5);
             AddPieceAtIndex('R', 7);
-
-            this->whiteKingRow = 0;
-            this->whiteKingCol = 4;
         }
         else
         {
@@ -1230,9 +1303,6 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
 
             RemovePieceAtIndex('r', 61);
             AddPieceAtIndex('r', 63);
-
-            this->blackKingRow = 0;
-            this->blackKingCol = 4;
         }
     }
     else if (move.moveType == CASTLEQUEEN)
@@ -1244,9 +1314,6 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
 
             RemovePieceAtIndex('R', 3);
             AddPieceAtIndex('R', 0);
-
-            this->whiteKingRow = 7;
-            this->whiteKingCol = 4;
         }
         else
         {
@@ -1255,10 +1322,9 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
 
             RemovePieceAtIndex('r', 59);
             AddPieceAtIndex('r', 56);
-            
-            this->blackKingRow = 7;
-            this->blackKingCol = 4;
         }
     }
+
+    occupiedSquares = whitePieces | blackPieces;
     //std::cout << "End Unmake Hash: " << this->hash << std::endl;
 }

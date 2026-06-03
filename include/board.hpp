@@ -55,6 +55,8 @@ class Board
     const uint64_t FILE_H = 0x8080808080808080ULL;
     const uint64_t RANK_1 = 0x00000000000000FFULL;
     const uint64_t RANK_2 = 0x000000000000FF00ULL; //for checking knight attacks
+    const uint64_t RANK_4 = 0x00000000FF000000ULL; //for checking white pawn double push
+    const uint64_t RANK_5 = 0x000000FF00000000ULL; //for checking black pawn double push
     const uint64_t RANK_6 = 0x00FF000000000000ULL; //for checking knight attacks
     const uint64_t RANK_7 = 0xFF00000000000000ULL;
 
@@ -90,8 +92,7 @@ class Board
     };
 
     char color;
-    int enPassantRow;
-    int enPassantCol;
+    int epIndex;
 
     std::unordered_map<char, uint64_t*> pieceBoards = {
         {'P', &whitePawns},
@@ -112,6 +113,7 @@ class Board
     void SetupBoard();
     void PrintBoard();
 
+    std::string IndexToSquare(int index);
     int PieceZobristIndex(char piece); //used for zobrist hashing
     char GetPieceAtIndex(int index); //get piece from bitboard at target index
     std::string SquareToString(int row, int col);
@@ -121,15 +123,15 @@ class Board
     void AddPieceAtIndex(char piece, int index);
 
     int PopLSB(uint64_t& bb);
-    bool IsSquareAttacked(int row, int col, char color);
+    bool IsSquareAttacked(int index, char color);
     bool IsKingChecked(char color);
 
-    void GetPawnMoves(int index, std::vector<Move>& moves);
-    void GetKnightMoves(int index, std::vector<Move>& moves);
-    void GetBishopMoves(int index, std::vector<Move>& moves);
-    void GetRookMoves(int index, std::vector<Move>& moves);
-    void GetQueenMoves(int index, std::vector<Move>& moves);
-    void GetKingMoves(int index, std::vector<Move>& moves);
+    void GetPawnMoves(std::vector<Move>& moves);
+    void GetKnightMoves(std::vector<Move>& moves);
+    void GetBishopMoves(std::vector<Move>& moves);
+    void GetRookMoves(std::vector<Move>& moves);
+    void GetQueenMoves(std::vector<Move>& moves);
+    void GetKingMoves(std::vector<Move>& moves);
     void GetLegalMoves(std::vector<Move>& moves);
 
     void SwitchColors();

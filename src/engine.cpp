@@ -54,8 +54,8 @@ int Engine::GetMoveScore(const Move& move, Board& board)
     //MVV-LVA
     if (move.moveType == CAPTURE)
     {
-        char capturedPiece = std::toupper(board.board[move.toRow][move.toCol]);
-        char pieceMoved = std::toupper(move.pieceMoved);
+        char capturedPiece = std::toupper(board.GetPieceAtIndex(move.toIndex));
+        char pieceMoved = std::toupper(board.GetPieceAtIndex(move.fromIndex));
         
         score += (this->eval.pieceValue[capturedPiece] * 10 - this->eval.pieceValue[pieceMoved]);
     }
