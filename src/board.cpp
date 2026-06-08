@@ -191,7 +191,7 @@ void Board::PrintBoard()
     }
 }
 
-std::string Board::IndexToSquare(int index)
+std::string Board::IndexToSquare(int index) const
 {
     std::string sq;
     sq.resize(2);
@@ -253,7 +253,7 @@ char Board::GetPieceAtIndex(int index)
 std::string Board::SquareToString(int row, int col)
 {
     char file = 'a' + col;
-    char rank = '8' - row;
+    char rank = '1' + row;
 
     return std::string() + file + rank;
 }
@@ -424,6 +424,8 @@ bool Board::IsSquareAttacked(int index, char attackerColor)
             {
                 if ((blackRooks | blackQueens) & newSq) return true;
             }
+
+            if (occupiedSquares & newSq) break;
 
             newRow += dirRow;
             newCol += dirCol;
@@ -891,12 +893,12 @@ void Board::GetLegalMoves(std::vector<Move>& moves)
 {
     moves.clear();
 
-    uint64_t pawns   = (color == 'w') ? whitePawns : blackPawns;
-    uint64_t knights = (color == 'w') ? whiteKnights : blackKnights;
-    uint64_t bishops = (color == 'w') ? whiteBishops : blackBishops;
-    uint64_t rooks   = (color == 'w') ? whiteRooks : blackRooks;
-    uint64_t queens  = (color == 'w') ? whiteQueens : blackQueens;
-    uint64_t king    = (color == 'w') ? whiteKing : blackKing;
+    uint64_t pawns   = (this->color == 'w') ? whitePawns : blackPawns;
+    uint64_t knights = (this->color == 'w') ? whiteKnights : blackKnights;
+    uint64_t bishops = (this->color == 'w') ? whiteBishops : blackBishops;
+    uint64_t rooks   = (this->color == 'w') ? whiteRooks : blackRooks;
+    uint64_t queens  = (this->color == 'w') ? whiteQueens : blackQueens;
+    uint64_t king    = (this->color == 'w') ? whiteKing : blackKing;
     
     GetPawnMoves(moves);
     GetKnightMoves(moves);
@@ -948,14 +950,14 @@ UndoMove Board::MakeMove(const Move& move)
     undo.blackQueenSide = blackQueenSide;
 
     //remove capturing piece from from-square
-    this->hash ^= Engine::pieceSquareVals[fromRow][fromCol][fromPieceIndex];
+    this->hash ^= Engine::pieceSquareVals[move.fromIndex][fromPieceIndex];
     //remove captured piece from to-square
     if (toPiece != '.')
     {
-        this->hash ^= Engine::pieceSquareVals[toRow][toCol][toPieceIndex];
+        this->hash ^= Engine::pieceSquareVals[move.toIndex][toPieceIndex];
     }
     //add capturing piece to to-square
-    this->hash ^= Engine::pieceSquareVals[toRow][toCol][fromPieceIndex];
+    this->hash ^= Engine::pieceSquareVals[move.toIndex][fromPieceIndex];
     this->hash ^= Engine::sideKey;
 
     if (this->epIndex != -1)
@@ -1006,168 +1008,193 @@ UndoMove Board::MakeMove(const Move& move)
 
     this->epIndex = -1;
 
-    if (move.moveType == NORMAL)
+    switch(move.moveType)
     {
-        RemovePieceAtIndex(fromPiece, move.fromIndex);
-        AddPieceAtIndex(fromPiece, move.toIndex);
-    }
-    else if (move.moveType == CAPTURE)
-    {
-        //std::cout << "Capturing piece: " << GetPieceAtIndex(move.fromIndex) << ", Captured piece: " << GetPieceAtIndex(move.toIndex) << std::endl;
-        RemovePieceAtIndex(toPiece, move.toIndex);
-        RemovePieceAtIndex(fromPiece, move.fromIndex);
-        AddPieceAtIndex(fromPiece, move.toIndex);
-    }
-    else if (move.moveType == PAWNDOUBLE)
-    {
-        RemovePieceAtIndex(fromPiece, move.fromIndex);
-        AddPieceAtIndex(fromPiece, move.toIndex);
-
-        if (fromPiece == 'P')
+        case NORMAL:
         {
-            this->epIndex = move.toIndex - 8;
+            RemovePieceAtIndex(fromPiece, move.fromIndex);
+            AddPieceAtIndex(fromPiece, move.toIndex);
+            break;
         }
-        else if (fromPiece == 'p')
+        case CAPTURE:
         {
-            this->epIndex = move.toIndex + 8;
-        }
-
-        //std::cout << "New epIndex: " << this->epIndex << ", fromRow: " << fromRow << ", fromCol: " << fromCol
-        //          << ", toRow: " << toRow << ", toCol: " << toCol << ", fromPiece: " << fromPiece << std::endl;
-    }
-    else if (move.moveType == PROMOTION)
-    {
-        RemovePieceAtIndex(fromPiece, move.fromIndex);
-
-        if (toPiece != '.')
-        {
+            //std::cout << "Capturing piece: " << GetPieceAtIndex(move.fromIndex) << ", Captured piece: " << GetPieceAtIndex(move.toIndex) << std::endl;
             RemovePieceAtIndex(toPiece, move.toIndex);
+            RemovePieceAtIndex(fromPiece, move.fromIndex);
+            AddPieceAtIndex(fromPiece, move.toIndex);
+            break;
         }
-
-        switch (move.promoteType)
+        case PAWNDOUBLE:
         {
-            case KNIGHT:
+            RemovePieceAtIndex(fromPiece, move.fromIndex);
+            AddPieceAtIndex(fromPiece, move.toIndex);
+
+            if (fromPiece == 'P')
             {
-                if (fromPiece == 'P')
-                {
-                    AddPieceAtIndex('N', move.toIndex);
-                }
-                else
-                {
-                    AddPieceAtIndex('n', move.toIndex);
-                }
-                break;
+                this->epIndex = move.toIndex - 8;
             }
-            case BISHOP:
+            else if (fromPiece == 'p')
             {
-                if (fromPiece == 'P')
-                {
-                    AddPieceAtIndex('B', move.toIndex);
-                }
-                else
-                {
-                    AddPieceAtIndex('b', move.toIndex);
-                }
-                break;
+                this->epIndex = move.toIndex + 8;
             }
-            case ROOK:
+
+            //std::cout << "New epIndex: " << this->epIndex << ", fromRow: " << fromRow << ", fromCol: " << fromCol
+            //          << ", toRow: " << toRow << ", toCol: " << toCol << ", fromPiece: " << fromPiece << std::endl;
+
+            break;
+        }
+        case PROMOTION:
+        {
+            RemovePieceAtIndex(fromPiece, move.fromIndex);
+
+            if (toPiece != '.')
             {
-                if (fromPiece == 'P')
-                {
-                    AddPieceAtIndex('R', move.toIndex);
-                }
-                else
-                {
-                    AddPieceAtIndex('r', move.toIndex);
-                }
-                break;
+                RemovePieceAtIndex(toPiece, move.toIndex);
             }
-            case QUEEN:
+
+            switch (move.promoteType)
             {
-                if (fromPiece == 'P')
+                case KNIGHT:
                 {
-                    AddPieceAtIndex('Q', move.toIndex);
+                    if (fromPiece == 'P')
+                    {
+                        AddPieceAtIndex('N', move.toIndex);
+                    }
+                    else
+                    {
+                        AddPieceAtIndex('n', move.toIndex);
+                    }
+                    break;
                 }
-                else
+                case BISHOP:
                 {
-                    AddPieceAtIndex('q', move.toIndex);
+                    if (fromPiece == 'P')
+                    {
+                        AddPieceAtIndex('B', move.toIndex);
+                    }
+                    else
+                    {
+                        AddPieceAtIndex('b', move.toIndex);
+                    }
+                    break;
                 }
-                break;
+                case ROOK:
+                {
+                    if (fromPiece == 'P')
+                    {
+                        AddPieceAtIndex('R', move.toIndex);
+                    }
+                    else
+                    {
+                        AddPieceAtIndex('r', move.toIndex);
+                    }
+                    break;
+                }
+                case QUEEN:
+                {
+                    if (fromPiece == 'P')
+                    {
+                        AddPieceAtIndex('Q', move.toIndex);
+                    }
+                    else
+                    {
+                        AddPieceAtIndex('q', move.toIndex);
+                    }
+                    break;
+                }
             }
+
+            break;
         }
-    }
-    else if (move.moveType == ENPASSANT)
-    {
-        this->epIndex = -1;
-
-        RemovePieceAtIndex(fromPiece, move.fromIndex);
-        AddPieceAtIndex(fromPiece, move.toIndex);
-
-        if (fromPiece == 'P')
+        case ENPASSANT:
         {
-            int pawnIndex = PieceZobristIndex('p');
-            RemovePieceAtIndex('p', move.toIndex - 8);
-            hash ^= Engine::pieceSquareVals[toRow + 1][toCol][pawnIndex];
+            RemovePieceAtIndex(fromPiece, move.fromIndex);
+            AddPieceAtIndex(fromPiece, move.toIndex);
+
+            if (fromPiece == 'P')
+            {
+                int pawnIndex = PieceZobristIndex('p');
+                RemovePieceAtIndex('p', move.toIndex - 8);
+                hash ^= Engine::pieceSquareVals[move.toIndex - 8][pawnIndex];
+            }
+            else if (fromPiece == 'p')
+            {
+                int pawnIndex = PieceZobristIndex('P');
+                RemovePieceAtIndex('P', move.toIndex + 8);
+                hash ^= Engine::pieceSquareVals[move.toIndex + 8][pawnIndex];
+            }
+
+            break;
         }
-        else if (fromPiece == 'p')
+        case CASTLEKING:
         {
-            int pawnIndex = PieceZobristIndex('P');
-            RemovePieceAtIndex('P', move.toIndex + 8);
-            hash ^= Engine::pieceSquareVals[toRow - 1][toCol][pawnIndex];
+            if (fromPiece == 'K')
+            {
+                RemovePieceAtIndex('K', 4);
+                AddPieceAtIndex('K', 6);
+
+                RemovePieceAtIndex('R', 7);
+                AddPieceAtIndex('R', 5);
+
+                int rookIndex = PieceZobristIndex('R');
+                int kingIndex = PieceZobristIndex('K');
+
+                this->hash ^= Engine::pieceSquareVals[7][rookIndex];
+                this->hash ^= Engine::pieceSquareVals[5][rookIndex];
+            }
+            else
+            {
+                RemovePieceAtIndex('k', 60);
+                AddPieceAtIndex('k', 62);
+
+                RemovePieceAtIndex('r', 63);
+                AddPieceAtIndex('r', 61);
+
+                int rookIndex = PieceZobristIndex('r');
+                int kingIndex = PieceZobristIndex('k');
+
+                this->hash ^= Engine::pieceSquareVals[63][rookIndex];
+                this->hash ^= Engine::pieceSquareVals[61][rookIndex];
+            }
+
+            break;
         }
-    }
-    else if (move.moveType == CASTLEKING)
-    {   
-        if (fromPiece == 'K')
+        case CASTLEQUEEN:
         {
-            RemovePieceAtIndex('K', 4);
-            AddPieceAtIndex('K', 6);
+            if (fromPiece == 'K')
+            {
+                RemovePieceAtIndex('K', 4);
+                AddPieceAtIndex('K', 2);
 
-            RemovePieceAtIndex('R', 7);
-            AddPieceAtIndex('R', 5);
+                RemovePieceAtIndex('R', 0);
+                AddPieceAtIndex('R', 3);
 
-            int rookIndex = PieceZobristIndex('R');
-            this->hash ^= Engine::pieceSquareVals[7][7][rookIndex];
-            this->hash ^= Engine::pieceSquareVals[7][5][rookIndex];
-        }
-        else
-        {
-            RemovePieceAtIndex('k', 60);
-            AddPieceAtIndex('k', 62);
+                int rookIndex = PieceZobristIndex('R');
+                int kingIndex = PieceZobristIndex('K');
 
-            RemovePieceAtIndex('r', 63);
-            AddPieceAtIndex('r', 61);
+                //this->hash ^= Engine::pieceSquareVals[7][4][kingIndex];
+                //this->hash ^= Engine::pieceSquareVals[7][2][kingIndex];
+                this->hash ^= Engine::pieceSquareVals[0][rookIndex];
+                this->hash ^= Engine::pieceSquareVals[3][rookIndex];
+            }
+            else
+            {
+                RemovePieceAtIndex('k', 60);
+                AddPieceAtIndex('k', 58);
 
-            int rookIndex = PieceZobristIndex('r');
-            this->hash ^= Engine::pieceSquareVals[0][7][rookIndex];
-            this->hash ^= Engine::pieceSquareVals[0][5][rookIndex];
-        }
-    }
-    else if (move.moveType == CASTLEQUEEN)
-    {
-        if (fromPiece == 'K')
-        {
-            RemovePieceAtIndex('K', 4);
-            AddPieceAtIndex('K', 2);
+                RemovePieceAtIndex('r', 56);
+                AddPieceAtIndex('r', 59);
 
-            RemovePieceAtIndex('R', 0);
-            AddPieceAtIndex('R', 3);
+                int rookIndex = PieceZobristIndex('r');
+                int kingIndex = PieceZobristIndex('k');
 
-            int rookIndex = PieceZobristIndex('R');
-            this->hash ^= Engine::pieceSquareVals[7][0][rookIndex];
-            this->hash ^= Engine::pieceSquareVals[7][3][rookIndex];
-        }
-        else
-        {
-            RemovePieceAtIndex('k', 60);
-            AddPieceAtIndex('k', 58);
+                //this->hash ^= Engine::pieceSquareVals[0][4][kingIndex];
+                //this->hash ^= Engine::pieceSquareVals[0][2][kingIndex];
+                this->hash ^= Engine::pieceSquareVals[56][rookIndex];
+                this->hash ^= Engine::pieceSquareVals[59][rookIndex];
+            }
 
-            RemovePieceAtIndex('r', 56);
-            AddPieceAtIndex('r', 59);
-
-            int rookIndex = PieceZobristIndex('r');
-            this->hash ^= Engine::pieceSquareVals[0][0][rookIndex];
-            this->hash ^= Engine::pieceSquareVals[0][3][rookIndex];
+            break;
         }
     }
 
@@ -1185,21 +1212,16 @@ UndoMove Board::MakeMove(const Move& move)
 
     occupiedSquares = whitePieces | blackPieces;
 
-    /*
-    std::cout << move.fromIndex << " " << move.toIndex << std::endl;
-    PrintBoard();
-    */
+    //if (move.moveType == CASTLEKING) std::cout << "End Make Hash: " << this->hash << std::endl;
 
     SwitchColors();
-
-    //std::cout << "End Make Hash: " << this->hash << std::endl;
 
     return undo;
 }
 
 void Board::UnmakeMove(const Move& move, const UndoMove& undo)
 {
-    //std::cout << "Start Unmake Hash: " << this->hash << std::endl;
+    //if (move.moveType == CASTLEKING) std::cout << "Start Unmake Hash: " << this->hash << std::endl;
     char fromPiece = undo.pieceMoved;
     char toPiece = undo.pieceCaptured;
 
@@ -1232,11 +1254,11 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
 
     this->epIndex = undo.epIndex;
 
-    this->hash ^= Engine::pieceSquareVals[fromRow][fromCol][fromPieceIndex];
-    this->hash ^= Engine::pieceSquareVals[toRow][toCol][fromPieceIndex];
+    this->hash ^= Engine::pieceSquareVals[move.fromIndex][fromPieceIndex];
+    this->hash ^= Engine::pieceSquareVals[move.toIndex][fromPieceIndex];
     if (toPiece != '.')
     {
-        this->hash ^= Engine::pieceSquareVals[toRow][toCol][toPieceIndex];
+        this->hash ^= Engine::pieceSquareVals[move.toIndex][toPieceIndex];
     }
     this->hash ^= Engine::sideKey;
 
@@ -1252,76 +1274,122 @@ void Board::UnmakeMove(const Move& move, const UndoMove& undo)
     (undo.blackQueenSide ? 8 : 0);
     this->hash ^= Engine::castlingKey[oldCastleIndex];
 
-    if (move.moveType == NORMAL || move.moveType == PAWNDOUBLE)
+    switch (move.moveType)
     {
-        RemovePieceAtIndex(fromPiece, move.toIndex);
-        AddPieceAtIndex(fromPiece, move.fromIndex);
-    }
-    else if (move.moveType == CAPTURE)
-    {
-        RemovePieceAtIndex(fromPiece, move.toIndex);
-        AddPieceAtIndex(fromPiece, move.fromIndex);
-        AddPieceAtIndex(toPiece, move.toIndex);
-    }
-    else if (move.moveType == ENPASSANT)
-    {
-        RemovePieceAtIndex(fromPiece, move.toIndex);
-        AddPieceAtIndex(fromPiece, move.fromIndex);
-
-        if (fromPiece == 'P')
+        case NORMAL:
+        case PAWNDOUBLE:
         {
-            AddPieceAtIndex('p', move.toIndex - 8); 
+            RemovePieceAtIndex(fromPiece, move.toIndex);
+            AddPieceAtIndex(fromPiece, move.fromIndex);
+
+            break;
         }
-        else if (fromPiece == 'p')
+        case CAPTURE:
         {
-            AddPieceAtIndex('P', move.toIndex + 8);
+            RemovePieceAtIndex(fromPiece, move.toIndex);
+            AddPieceAtIndex(fromPiece, move.fromIndex);
+            AddPieceAtIndex(toPiece, move.toIndex);
+            
+            break;
         }
-    }
-    else if (move.moveType == PROMOTION)
-    {
-        char promotedPiece = GetPieceAtIndex(move.toIndex);
-
-        RemovePieceAtIndex(promotedPiece, move.toIndex);
-        if (toPiece != '.') AddPieceAtIndex(toPiece, move.toIndex);
-
-        AddPieceAtIndex(fromPiece, move.fromIndex);
-    }
-    else if (move.moveType == CASTLEKING)
-    {
-        if (fromPiece == 'K')
+        case ENPASSANT:
         {
-            RemovePieceAtIndex('K', 6);
-            AddPieceAtIndex('K', 4);
+            RemovePieceAtIndex(fromPiece, move.toIndex);
+            AddPieceAtIndex(fromPiece, move.fromIndex);
 
-            RemovePieceAtIndex('R', 5);
-            AddPieceAtIndex('R', 7);
+            if (fromPiece == 'P')
+            {
+                AddPieceAtIndex('p', move.toIndex - 8);
+                this->hash ^= Engine::pieceSquareVals[move.toIndex - 8][PieceZobristIndex('p')]; 
+            }
+            else if (fromPiece == 'p')
+            {
+                AddPieceAtIndex('P', move.toIndex + 8);
+                this->hash ^= Engine::pieceSquareVals[move.toIndex + 8][PieceZobristIndex('P')]; 
+            }
+
+            break;
         }
-        else
+        case PROMOTION:
         {
-            RemovePieceAtIndex('k', 62);
-            AddPieceAtIndex('k', 60);
+            char promotedPiece = GetPieceAtIndex(move.toIndex);
 
-            RemovePieceAtIndex('r', 61);
-            AddPieceAtIndex('r', 63);
+            RemovePieceAtIndex(promotedPiece, move.toIndex);
+            if (toPiece != '.') AddPieceAtIndex(toPiece, move.toIndex);
+
+            AddPieceAtIndex(fromPiece, move.fromIndex);
+
+            break;
         }
-    }
-    else if (move.moveType == CASTLEQUEEN)
-    {
-        if (fromPiece == 'K')
+        case CASTLEKING:
         {
-            RemovePieceAtIndex('K', 2);
-            AddPieceAtIndex('K', 4);
+            if (fromPiece == 'K')
+            {
+                RemovePieceAtIndex('K', 6);
+                AddPieceAtIndex('K', 4);
 
-            RemovePieceAtIndex('R', 3);
-            AddPieceAtIndex('R', 0);
+                RemovePieceAtIndex('R', 5);
+                AddPieceAtIndex('R', 7);
+
+                int rookIndex = PieceZobristIndex('R');
+                int kingIndex = PieceZobristIndex('K');
+                
+                this->hash ^= Engine::pieceSquareVals[7][rookIndex];
+                this->hash ^= Engine::pieceSquareVals[5][rookIndex];
+            }
+            else
+            {
+                RemovePieceAtIndex('k', 62);
+                AddPieceAtIndex('k', 60);
+
+                RemovePieceAtIndex('r', 61);
+                AddPieceAtIndex('r', 63);
+
+                int rookIndex = PieceZobristIndex('r');
+                int kingIndex = PieceZobristIndex('k');
+
+                this->hash ^= Engine::pieceSquareVals[63][rookIndex];
+                this->hash ^= Engine::pieceSquareVals[61][rookIndex];
+            }
+
+            break;
         }
-        else
+        case CASTLEQUEEN:
         {
-            RemovePieceAtIndex('k', 58);
-            AddPieceAtIndex('k', 60);
+            if (fromPiece == 'K')
+            {
+                RemovePieceAtIndex('K', 2);
+                AddPieceAtIndex('K', 4);
 
-            RemovePieceAtIndex('r', 59);
-            AddPieceAtIndex('r', 56);
+                RemovePieceAtIndex('R', 3);
+                AddPieceAtIndex('R', 0);
+
+                int rookIndex = PieceZobristIndex('R');
+                int kingIndex = PieceZobristIndex('K');
+
+                //this->hash ^= Engine::pieceSquareVals[7][2][kingIndex];
+                //this->hash ^= Engine::pieceSquareVals[7][4][kingIndex];
+                this->hash ^= Engine::pieceSquareVals[3][rookIndex];
+                this->hash ^= Engine::pieceSquareVals[0][rookIndex];
+            }
+            else
+            {
+                RemovePieceAtIndex('k', 58);
+                AddPieceAtIndex('k', 60);
+
+                RemovePieceAtIndex('r', 59);
+                AddPieceAtIndex('r', 56);
+
+                int rookIndex = PieceZobristIndex('r');
+                int kingIndex = PieceZobristIndex('k');
+
+                //this->hash ^= Engine::pieceSquareVals[0][2][kingIndex];
+                //this->hash ^= Engine::pieceSquareVals[0][4][kingIndex];
+                this->hash ^= Engine::pieceSquareVals[56][rookIndex];
+                this->hash ^= Engine::pieceSquareVals[59][rookIndex];
+            }
+
+            break;
         }
     }
 

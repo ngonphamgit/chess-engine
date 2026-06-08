@@ -64,11 +64,6 @@ class Board
     int blackControlSquares = 0;
     int whiteControl[8][8] = {};
     int blackControl[8][8] = {};
-    
-    int whiteKingRow = 7;
-    int whiteKingCol = 4;
-    int blackKingRow = 0;
-    int blackKingCol = 4;
 
     uint64_t hash;
 
@@ -113,7 +108,7 @@ class Board
     void SetupBoard();
     void PrintBoard();
 
-    std::string IndexToSquare(int index);
+    std::string IndexToSquare(int index) const;
     int PieceZobristIndex(char piece); //used for zobrist hashing
     char GetPieceAtIndex(int index); //get piece from bitboard at target index
     std::string SquareToString(int row, int col);

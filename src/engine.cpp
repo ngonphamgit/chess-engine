@@ -8,8 +8,12 @@
 #include <cctype>
 #include <random>
 #include <cstdint>
+#include <cstdlib>
+#include <cassert>
+#include <stdexcept>  // std::runtime_error
+#include <exception>  // std::exception
 
-uint64_t Engine::pieceSquareVals[8][8][12];
+uint64_t Engine::pieceSquareVals[64][12];
 uint64_t Engine::sideKey;
 uint64_t Engine::castlingKey[16];
 uint64_t Engine::epKey[8];
@@ -24,14 +28,11 @@ void Engine::InitZobrist()
     std::mt19937_64 rng(8000000);
     std::uniform_int_distribution<uint64_t> dist;
 
-    for (int r = 0; r < 8; r++)
+    for (int rc = 0; rc < 64; rc++)
     {
-        for (int c = 0; c < 8; c++)
+        for (int i = 0; i < 12; i++)
         {
-            for (int i = 0; i < 12; i++)
-            {
-                pieceSquareVals[r][c][i] = dist(rng);
-            }
+            pieceSquareVals[rc][i] = dist(rng);
         }
     }
 
@@ -66,6 +67,7 @@ int Engine::GetMoveScore(const Move& move, Board& board)
 void Engine::OrderMoves(std::vector<Move>& moves, Board& board, int depth)
 {
     Move bestMove;
+    
     uint64_t index = board.hash & (Engine::tt.size() - 1);
     TTEntry& entry = Engine::tt[index];
     if (entry.zobristKey == board.hash && entry.depth >= depth)
@@ -99,10 +101,10 @@ int Engine::Minimax(Board& board, int depth, int alpha, int beta, bool maxPlayer
         if (entry.scoreFlag == 'e')
         return entry.score;
 
-        if (entry.scoreFlag == 'b' && entry.score >= beta)
+        if (entry.scoreFlag == 'b')
         alpha = std::max(alpha, entry.score);
 
-        if (entry.scoreFlag == 'a' && entry.score <= alpha)
+        if (entry.scoreFlag == 'a')
         beta = std::min(beta, entry.score);
 
         if (alpha >= beta) return entry.score;
@@ -124,25 +126,35 @@ int Engine::Minimax(Board& board, int depth, int alpha, int beta, bool maxPlayer
 
         for (const Move& move : moves)
         {
-            char originalColor = board.color;
-            UndoMove undo = board.MakeMove(move);
-            if (board.IsKingChecked(originalColor))
+            try
             {
+                char originalColor = board.color;
+                uint64_t originalHash = board.hash;
+                UndoMove undo = board.MakeMove(move);
+                if (board.IsKingChecked(originalColor))
+                {
+                    board.UnmakeMove(move, undo);
+                    continue;
+                }
+
+                int score = Minimax(board, depth - 1, alpha, beta, !maxPlayer);
+
                 board.UnmakeMove(move, undo);
-                continue;
+                if (originalHash != board.hash) throw std::runtime_error("Incorrect restoration");
+                if (score > best)
+                {
+                    best = score;
+                    bestMove = move;
+                }
+                alpha = std::max(alpha, score);
+
+                if (alpha >= beta) break;
             }
-
-            int score = Minimax(board, depth - 1, alpha, beta, !maxPlayer);
-
-            board.UnmakeMove(move, undo);
-            if (score > best)
+            catch (const std::exception& e)
             {
-                best = score;
-                bestMove = move;
+                std::cout << move.ToString(board);
+                std::abort();
             }
-            alpha = std::max(alpha, score);
-
-            if (alpha >= beta) break;
         }
 
         TTEntry newEntry;
@@ -166,25 +178,35 @@ int Engine::Minimax(Board& board, int depth, int alpha, int beta, bool maxPlayer
 
         for (const Move& move : moves)
         {
-            char originalColor = board.color;
-            UndoMove undo = board.MakeMove(move);
-            if (board.IsKingChecked(originalColor))
+            try
             {
+                char originalColor = board.color;
+                uint64_t originalHash = board.hash;
+                UndoMove undo = board.MakeMove(move);
+                if (board.IsKingChecked(originalColor))
+                {
+                    board.UnmakeMove(move, undo);
+                    continue;
+                }
+
+                int score = Minimax(board, depth - 1, alpha, beta, !maxPlayer);
+
                 board.UnmakeMove(move, undo);
-                continue;
+                if (originalHash != board.hash) throw std::runtime_error("Incorrect restoration");
+                if (score < best)
+                {
+                    best = score;
+                    bestMove = move;
+                }
+                beta = std::min(beta, score);
+
+                if (alpha >= beta) break;
             }
-
-            int score = Minimax(board, depth - 1, alpha, beta, !maxPlayer);
-
-            board.UnmakeMove(move, undo);
-            if (score < best)
+            catch (const std::exception& e)
             {
-                best = score;
-                bestMove = move;
+                std::cout << move.ToString(board);
+                std::abort();
             }
-            beta = std::min(beta, score);
-
-            if (alpha >= beta) break;
         }
 
         TTEntry newEntry;
@@ -222,37 +244,48 @@ Move Engine::GetBestMove(Board& board, int depth, bool maxPlayer)
 
     for (const Move& move : moves)
     {
-        char originalColor = board.color;
-        UndoMove undo = board.MakeMove(move);
-        if (board.IsKingChecked(originalColor))
+        try
         {
+            char originalColor = board.color;
+            uint64_t originalHash = board.hash;
+            UndoMove undo = board.MakeMove(move);
+            if (board.IsKingChecked(originalColor))
+            {
+                board.UnmakeMove(move, undo);
+                continue;
+            }
+
+            int score = Minimax(board, depth - 1, alpha, beta, !maxPlayer);
+
             board.UnmakeMove(move, undo);
-            continue;
-        }
-
-        int score = Minimax(board, depth - 1, alpha, beta, !maxPlayer);
-
-        board.UnmakeMove(move, undo);
-        if (maxPlayer)
-        {
-            if (score > best)
+            if (originalHash != board.hash) throw std::runtime_error("Incorrect restoration");
+            if (maxPlayer)
             {
-                best = score;
-                bestMove = move;
-            }
+                if (score > best)
+                {
+                    best = score;
+                    bestMove = move;
+                }
 
-            alpha = std::max(alpha, score);
-        }
-        else
-        {
-            if (score < best)
+                alpha = std::max(alpha, score);
+            }
+            else
             {
-                best = score;
-                bestMove = move;
-            }
+                if (score < best)
+                {
+                    best = score;
+                    bestMove = move;
+                }
 
-            beta = std::min(beta, score);
+                beta = std::min(beta, score);
+            }
         }
+        catch (const std::exception& e)
+        {
+            std::cout << move.ToString(board);
+            std::abort();
+        }
+        
     }
 
     return bestMove;

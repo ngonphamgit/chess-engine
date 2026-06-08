@@ -23,7 +23,7 @@ class Engine
     uint64_t nodes = 0;
     Eval eval;
 
-    static uint64_t pieceSquareVals[8][8][12];
+    static uint64_t pieceSquareVals[64][12];
     static uint64_t sideKey;
     static uint64_t castlingKey[16];
     static uint64_t epKey[8];

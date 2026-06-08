@@ -14,12 +14,13 @@ int main()
 
     Engine engine;
     Engine::InitZobrist();
-
+    board.color = 'w';
+    
     /*
     auto start =
         std::chrono::high_resolution_clock::now();
 
-    Move move = engine.GetBestMove(board, 2, true);
+    Move move = engine.GetBestMove(board, 7, false);
 
     auto end =
         std::chrono::high_resolution_clock::now();
@@ -32,7 +33,7 @@ int main()
     std::cout << "Time: " << seconds << " sec\n";
     std::cout << "NPS: " << (engine.nodes / seconds) << '\n';
     */
-
+    
     while (!board.gameOver)
     {
         board.PrintBoard();

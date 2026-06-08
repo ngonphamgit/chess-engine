@@ -6,4 +6,5 @@
 #include <vector>
 
 void PerftTest(Board& board, int depth);
-int Perft(Board& board, int depth, std::vector<Move>& moves);
+int Perft(Board& board, int depth);
+void ManualTest(Board& board, int depth);

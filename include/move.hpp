@@ -1,5 +1,10 @@
 #pragma once
 
+#include <cstring>
+#include <sstream>
+
+class Board;
+
 enum PromoteType
 {
     KNIGHT,
@@ -44,6 +49,8 @@ struct Move
                moveType == other.moveType &&
                promoteType == other.promoteType;
     }
+
+    std::string ToString(const Board& board) const;
 };
 
 struct UndoMove
