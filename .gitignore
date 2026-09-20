@@ -11,3 +11,6 @@ cmake-build-debug/
 Thumbs.db
 
 .gdbinit
+
+#output files
+*.txt

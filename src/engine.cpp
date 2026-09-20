@@ -94,6 +94,9 @@ int Engine::Minimax(Board& board, int depth, int alpha, int beta, bool maxPlayer
 {
     this->nodes++;
 
+    int originalAlpha = alpha;
+    int originalBeta = beta;
+
     uint64_t index = board.hash & (Engine::tt.size() - 1);
     TTEntry& entry = Engine::tt[index];
     if (entry.zobristKey == board.hash && entry.depth >= depth)
@@ -116,9 +119,6 @@ int Engine::Minimax(Board& board, int depth, int alpha, int beta, bool maxPlayer
     std::vector<Move> moves;
     board.GetLegalMoves(moves);
     OrderMoves(moves, board, depth);
-
-    int originalAlpha = alpha;
-    int originalBeta = beta;
 
     if (maxPlayer)
     {
@@ -168,7 +168,10 @@ int Engine::Minimax(Board& board, int depth, int alpha, int beta, bool maxPlayer
         
         newEntry.bestMove = bestMove;
 
-        Engine::tt[index] = newEntry;
+        if (entry.zobristKey != board.hash || depth >= entry.depth)
+        {
+            Engine::tt[index] = newEntry;
+        }
 
         return best;
     }
@@ -220,7 +223,10 @@ int Engine::Minimax(Board& board, int depth, int alpha, int beta, bool maxPlayer
         
         newEntry.bestMove = bestMove;
 
-        Engine::tt[index] = newEntry;
+        if (entry.zobristKey != board.hash || depth >= entry.depth)
+        {
+            Engine::tt[index] = newEntry;
+        }
 
         return best;
     }
